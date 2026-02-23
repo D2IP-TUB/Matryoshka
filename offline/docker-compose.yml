@@ -1,0 +1,74 @@
+x-indexer-base: &indexer-base
+  build:
+    context: ../
+    dockerfile: offline/Dockerfile
+  environment:
+    - PYTHONPATH=/app
+    - PYTHONUNBUFFERED=1
+    - LOG_LEVEL=INFO
+    - JSON_LOGGING=false
+  volumes:
+    - "${DATA_DIR:-./data}:/app/data:rw"
+    - logs:/app/logs:rw
+    - "./config:/app/config:ro"
+    - "${SSH_KEY_DIR:-~/.ssh}:/home/appuser/.ssh:ro"
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "100m"
+      max-file: "5"
+  healthcheck:
+    test: ["CMD", "true"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    start_period: 30s
+  networks:
+    - indexers-net
+
+services:
+  nyc-indexer:
+    <<: *indexer-base
+    container_name: nyc-lake-indexer
+    deploy:
+      resources:
+        limits:
+          cpus: '24.0'
+          memory: 150G
+        reservations:
+          cpus: '4.0'
+          memory: 16G
+
+  cuk-indexer:
+    <<: *indexer-base
+    container_name: cuk-lake-indexer
+    deploy:
+      resources:
+        limits:
+          cpus: '64.0'
+          memory: 320G
+        reservations:
+          cpus: '4.0'
+          memory: 64G
+
+  gittables-indexer:
+    <<: *indexer-base
+    container_name: gittables-lake-indexer
+    deploy:
+      resources:
+        limits:
+          cpus: '12.0'
+          memory: 128G
+        reservations:
+          cpus: '4.0'
+          memory: 64G
+
+volumes:
+  logs:
+
+networks:
+  indexers-net:
+    external: true

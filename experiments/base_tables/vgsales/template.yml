@@ -1,0 +1,19 @@
+api_version: 0
+
+# In sources we include as many data sources as desired
+sources:
+
+# Include a source for each data source to configure
+
+  # name to identify each source, e.g., migration_database, production, lake, etc.
+- name: "gittables"
+  # indicate the type of source, one of [csv, postgres, mysql, oracle10g, oracle11g]  
+  type: csv
+  config:
+    # path indicates where the CSV files live
+    # path: "/mnt/raid0/data/extracted/nyc/"
+    # # separator used in the CSV files
+    # separator: '\t'
+    path: "/tmp/base_tables/vgsales/"
+    # separator used in the CSV files
+    separator: ','

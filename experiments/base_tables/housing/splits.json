@@ -1,0 +1,10 @@
+[
+    {
+        "features": ["Town/City", "Property Type", "Duration", "PAON", "SAON", "PPD Category Type", "Record Status", "sale_month", "Price"],
+        "target": "Old/New",
+        "target_type": "binary",
+        "categorical_features": ["Town/City", "Property Type", "Duration", "PAON", "SAON", "PPD Category Type", "Record Status", "sale_month"],
+        "numeric_features": ["Price"],
+        "query_col": "Town/City"
+    }
+]

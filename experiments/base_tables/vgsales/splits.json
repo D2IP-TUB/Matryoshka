@@ -1,0 +1,10 @@
+[
+    {
+        "features": ["Name", "Platform", "Year", "Genre", "Publisher"],
+        "target": "Global_Sales",
+        "target_type": "continuous",
+        "categorical_features": ["Name", "Platform", "Genre", "Publisher", "Year"],
+        "numeric_features": [],
+        "query_col": "Publisher"
+    }
+]

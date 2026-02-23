@@ -1,0 +1,10 @@
+[
+    {
+        "features": ["Year", "County of Program Location", "Program Category", "Age Group", "Admissions"],
+        "target": "Primary Substance Group",
+        "target_type": "multiclass",
+        "categorical_features": ["Year", "County of Program Location", "Program Category", "Age Group"],
+        "numeric_features": ["Admissions"],
+        "query_col": "County of Program Location"
+    }
+]

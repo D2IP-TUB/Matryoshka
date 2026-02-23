@@ -1,0 +1,306 @@
+[0;34m[INFO][0m 2025-12-17 14:25:45 - Logs will be written to: /app/logs/pipeline_20251217_142545.log
+[0;34m[INFO][0m 2025-12-17 14:25:45 - Checking system resources...
+[0;34m[INFO][0m 2025-12-17 14:25:45 - Container environment: true
+[0;34m[INFO][0m 2025-12-17 14:25:45 - Memory: 8.6%, Disk: 72%, Load: 2.41
+[0;34m[INFO][0m 2025-12-17 14:25:45 - Starting pipeline with lakes: cuk
+[0;34m[INFO][0m 2025-12-17 14:25:45 - Resource limits - CPU nice: 0, I/O class: 2, I/O priority: 6
+[0;34m[INFO][0m 2025-12-17 14:25:45 - Started pipeline with PID: 50
+[0;34m[INFO][0m 2025-12-17 14:25:45 - Set I/O priority: class 2, priority 6
+[0;34m[INFO][0m 2025-12-17 14:25:45 - Set CPU priority (nice): 0
+[0;34m[INFO][0m 2025-12-17 14:25:45 - Starting resource monitoring for PID 50
+[0;31m[ERROR][0m 2025-12-17 14:25:46 - Pipeline failed with exit code: 1
+[0;34m[INFO][0m 2025-12-17 14:25:46 - Starting cleanup process...
+[0;34m[INFO][0m 2025-12-17 14:25:47 - Cleanup completed
+[0;34m[INFO][0m 2025-12-17 14:28:24 - Logs will be written to: /app/logs/pipeline_20251217_142824.log
+[0;34m[INFO][0m 2025-12-17 14:28:24 - Checking system resources...
+[0;34m[INFO][0m 2025-12-17 14:28:24 - Container environment: true
+[0;34m[INFO][0m 2025-12-17 14:28:24 - Memory: 8.5%, Disk: 72%, Load: 2.77
+[0;34m[INFO][0m 2025-12-17 14:28:24 - Starting pipeline with lakes: cuk
+[0;34m[INFO][0m 2025-12-17 14:28:24 - Resource limits - CPU nice: 0, I/O class: 2, I/O priority: 6
+[0;34m[INFO][0m 2025-12-17 14:28:24 - Started pipeline with PID: 50
+[0;34m[INFO][0m 2025-12-17 14:28:24 - Set I/O priority: class 2, priority 6
+[0;34m[INFO][0m 2025-12-17 14:28:24 - Set CPU priority (nice): 0
+[0;34m[INFO][0m 2025-12-17 14:28:24 - Starting resource monitoring for PID 50
+[0;31m[ERROR][0m 2025-12-17 14:28:26 - Pipeline failed with exit code: 1
+[0;34m[INFO][0m 2025-12-17 14:28:26 - Starting cleanup process...
+[0;34m[INFO][0m 2025-12-17 14:28:27 - Cleanup completed
+[0;34m[INFO][0m 2025-12-17 14:30:30 - Logs will be written to: /app/logs/pipeline_20251217_143030.log
+[0;34m[INFO][0m 2025-12-17 14:30:30 - Checking system resources...
+[0;34m[INFO][0m 2025-12-17 14:30:30 - Container environment: true
+[0;34m[INFO][0m 2025-12-17 14:30:30 - Memory: 8.5%, Disk: 72%, Load: 2.57
+[0;34m[INFO][0m 2025-12-17 14:30:30 - Starting pipeline with lakes: cuk
+[0;34m[INFO][0m 2025-12-17 14:30:30 - Resource limits - CPU nice: 0, I/O class: 2, I/O priority: 6
+[0;34m[INFO][0m 2025-12-17 14:30:30 - Started pipeline with PID: 50
+[0;34m[INFO][0m 2025-12-17 14:30:30 - Set I/O priority: class 2, priority 6
+[0;34m[INFO][0m 2025-12-17 14:30:30 - Set CPU priority (nice): 0
+[0;34m[INFO][0m 2025-12-17 14:30:30 - Starting resource monitoring for PID 50
+[0;31m[ERROR][0m 2025-12-17 14:42:31 - Pipeline failed with exit code: 1
+[0;34m[INFO][0m 2025-12-17 14:42:31 - Starting cleanup process...
+[0;34m[INFO][0m 2025-12-17 14:42:32 - Cleanup completed
+[0;34m[INFO][0m 2025-12-18 09:20:07 - Logs will be written to: /app/logs/pipeline_20251218_092007.log
+[0;34m[INFO][0m 2025-12-18 09:20:07 - Checking system resources...
+[0;34m[INFO][0m 2025-12-18 09:20:07 - Container environment: true
+[0;34m[INFO][0m 2025-12-18 09:20:07 - Memory: 8.5%, Disk: 72%, Load: 2.00
+[0;34m[INFO][0m 2025-12-18 09:20:07 - Starting pipeline with lakes: cuk
+[0;34m[INFO][0m 2025-12-18 09:20:07 - Resource limits - CPU nice: 0, I/O class: 2, I/O priority: 6
+[0;34m[INFO][0m 2025-12-18 09:20:08 - Started pipeline with PID: 50
+[0;34m[INFO][0m 2025-12-18 09:20:08 - Set I/O priority: class 2, priority 6
+[0;34m[INFO][0m 2025-12-18 09:20:08 - Set CPU priority (nice): 0
+[0;34m[INFO][0m 2025-12-18 09:20:08 - Starting resource monitoring for PID 50
+[0;34m[INFO][0m 2025-12-18 12:56:38 - Starting cleanup process...
+[0;34m[INFO][0m 2025-12-18 12:56:38 - Terminating main process 50...
+[0;34m[INFO][0m 2025-12-18 12:56:38 - Waiting for graceful shutdown... (0s)
+[0;34m[INFO][0m 2025-12-18 12:56:39 - Starting cleanup process...
+[0;34m[INFO][0m 2025-12-18 12:56:39 - Terminating main process 50...
+[0;34m[INFO][0m 2025-12-18 12:56:39 - Waiting for graceful shutdown... (0s)
+[0;34m[INFO][0m 2025-12-18 13:00:13 - Logs will be written to: /app/logs/pipeline_20251218_130013.log
+[0;34m[INFO][0m 2025-12-18 13:00:13 - Checking system resources...
+[0;34m[INFO][0m 2025-12-18 13:00:13 - Container environment: true
+[0;34m[INFO][0m 2025-12-18 13:00:13 - Memory: 8.3%, Disk: 87%, Load: 2.57
+[0;34m[INFO][0m 2025-12-18 13:00:13 - Starting pipeline with lakes: cuk
+[0;34m[INFO][0m 2025-12-18 13:00:13 - Resource limits - CPU nice: 0, I/O class: 2, I/O priority: 6
+[0;34m[INFO][0m 2025-12-18 13:00:13 - Started pipeline with PID: 50
+[0;34m[INFO][0m 2025-12-18 13:00:13 - Set I/O priority: class 2, priority 6
+[0;34m[INFO][0m 2025-12-18 13:00:13 - Set CPU priority (nice): 0
+[0;34m[INFO][0m 2025-12-18 13:00:13 - Starting resource monitoring for PID 50
+[0;31m[ERROR][0m 2025-12-18 13:00:15 - Pipeline failed with exit code: 1
+[0;34m[INFO][0m 2025-12-18 13:00:15 - Starting cleanup process...
+[0;34m[INFO][0m 2025-12-18 13:00:16 - Cleanup completed
+[0;34m[INFO][0m 2025-12-18 13:19:33 - Logs will be written to: /app/logs/pipeline_20251218_131933.log
+[0;34m[INFO][0m 2025-12-18 13:19:33 - Checking system resources...
+[0;34m[INFO][0m 2025-12-18 13:19:33 - Container environment: true
+[0;34m[INFO][0m 2025-12-18 13:19:33 - Memory: 8.3%, Disk: 86%, Load: 2.26
+[0;34m[INFO][0m 2025-12-18 13:19:33 - Starting pipeline with lakes: cuk
+[0;34m[INFO][0m 2025-12-18 13:19:33 - Resource limits - CPU nice: 0, I/O class: 2, I/O priority: 6
+[0;34m[INFO][0m 2025-12-18 13:19:33 - Started pipeline with PID: 51
+[0;34m[INFO][0m 2025-12-18 13:19:33 - Set I/O priority: class 2, priority 6
+[0;34m[INFO][0m 2025-12-18 13:19:33 - Set CPU priority (nice): 0
+[0;34m[INFO][0m 2025-12-18 13:19:33 - Starting resource monitoring for PID 51
+[1;33m[WARN][0m 2025-12-18 20:46:55 - Memory pressure detected: 46.54%
+[0;31m[ERROR][0m 2025-12-18 20:47:06 - Pipeline failed with exit code: 137
+[0;34m[INFO][0m 2025-12-18 20:47:06 - Starting cleanup process...
+[0;34m[INFO][0m 2025-12-18 20:47:07 - Cleanup completed
+[0;34m[INFO][0m 2025-12-19 10:13:04 - Logs will be written to: /app/logs/pipeline_20251219_101304.log
+[0;34m[INFO][0m 2025-12-19 10:13:04 - Checking system resources...
+[0;34m[INFO][0m 2025-12-19 10:13:04 - Container environment: true
+[0;34m[INFO][0m 2025-12-19 10:13:04 - Memory: 9.4%, Disk: 85%, Load: 2.35
+[0;34m[INFO][0m 2025-12-19 10:13:04 - Starting pipeline with lakes: cuk
+[0;34m[INFO][0m 2025-12-19 10:13:04 - Resource limits - CPU nice: 0, I/O class: 2, I/O priority: 6
+[0;34m[INFO][0m 2025-12-19 10:13:04 - Started pipeline with PID: 50
+[0;34m[INFO][0m 2025-12-19 10:13:04 - Set I/O priority: class 2, priority 6
+[0;34m[INFO][0m 2025-12-19 10:13:04 - Set CPU priority (nice): 0
+[0;34m[INFO][0m 2025-12-19 10:13:04 - Starting resource monitoring for PID 50
+[0;34m[INFO][0m 2025-12-19 10:14:23 - Starting cleanup process...
+[0;34m[INFO][0m 2025-12-19 10:14:23 - Terminating main process 50...
+[0;34m[INFO][0m 2025-12-19 10:14:23 - Waiting for graceful shutdown... (0s)
+[0;34m[INFO][0m 2025-12-19 10:14:24 - Starting cleanup process...
+[0;34m[INFO][0m 2025-12-19 10:14:25 - Cleanup completed
+[0;34m[INFO][0m 2025-12-19 10:14:31 - Logs will be written to: /app/logs/pipeline_20251219_101431.log
+[0;34m[INFO][0m 2025-12-19 10:14:31 - Checking system resources...
+[0;34m[INFO][0m 2025-12-19 10:14:31 - Container environment: true
+[0;34m[INFO][0m 2025-12-19 10:14:31 - Memory: 8.6%, Disk: 85%, Load: 0.66
+[0;34m[INFO][0m 2025-12-19 10:14:31 - Starting pipeline with lakes: cuk
+[0;34m[INFO][0m 2025-12-19 10:14:31 - Resource limits - CPU nice: 0, I/O class: 2, I/O priority: 6
+[0;34m[INFO][0m 2025-12-19 10:14:31 - Started pipeline with PID: 279
+[0;34m[INFO][0m 2025-12-19 10:14:31 - Set I/O priority: class 2, priority 6
+[0;34m[INFO][0m 2025-12-19 10:14:31 - Set CPU priority (nice): 0
+[0;34m[INFO][0m 2025-12-19 10:14:31 - Starting resource monitoring for PID 279
+[0;34m[INFO][0m 2025-12-19 10:15:34 - Starting cleanup process...
+[0;34m[INFO][0m 2025-12-19 10:15:34 - Terminating main process 279...
+[0;34m[INFO][0m 2025-12-19 10:15:34 - Waiting for graceful shutdown... (0s)
+[0;34m[INFO][0m 2025-12-19 10:15:35 - Starting cleanup process...
+[0;34m[INFO][0m 2025-12-19 10:15:36 - Cleanup completed
+[0;34m[INFO][0m 2025-12-19 10:18:58 - Logs will be written to: /app/logs/pipeline_20251219_101858.log
+[0;34m[INFO][0m 2025-12-19 10:18:58 - Checking system resources...
+[0;34m[INFO][0m 2025-12-19 10:18:58 - Container environment: true
+[0;34m[INFO][0m 2025-12-19 10:18:58 - Memory: 8.3%, Disk: 85%, Load: 1.93
+[0;34m[INFO][0m 2025-12-19 10:18:58 - Starting pipeline with lakes: cuk
+[0;34m[INFO][0m 2025-12-19 10:18:58 - Resource limits - CPU nice: 0, I/O class: 2, I/O priority: 6
+[0;34m[INFO][0m 2025-12-19 10:18:58 - Started pipeline with PID: 50
+[0;34m[INFO][0m 2025-12-19 10:18:58 - Set I/O priority: class 2, priority 6
+[0;34m[INFO][0m 2025-12-19 10:18:58 - Set CPU priority (nice): 0
+[0;34m[INFO][0m 2025-12-19 10:18:58 - Starting resource monitoring for PID 50
+[0;31m[ERROR][0m 2025-12-19 10:21:14 - Pipeline failed with exit code: 1
+[0;34m[INFO][0m 2025-12-19 10:21:14 - Starting cleanup process...
+[0;34m[INFO][0m 2025-12-19 10:21:15 - Cleanup completed
+[0;34m[INFO][0m 2025-12-19 11:35:52 - Logs will be written to: /app/logs/pipeline_20251219_113552.log
+[0;34m[INFO][0m 2025-12-19 11:35:52 - Checking system resources...
+[0;34m[INFO][0m 2025-12-19 11:35:52 - Container environment: true
+[0;34m[INFO][0m 2025-12-19 11:35:52 - Memory: 8.4%, Disk: 85%, Load: 0.23
+[0;34m[INFO][0m 2025-12-19 11:35:52 - Starting pipeline with lakes: cuk
+[0;34m[INFO][0m 2025-12-19 11:35:52 - Resource limits - CPU nice: 0, I/O class: 2, I/O priority: 6
+[0;34m[INFO][0m 2025-12-19 11:35:52 - Started pipeline with PID: 1186
+[0;34m[INFO][0m 2025-12-19 11:35:52 - Set I/O priority: class 2, priority 6
+[0;34m[INFO][0m 2025-12-19 11:35:52 - Set CPU priority (nice): 0
+[0;34m[INFO][0m 2025-12-19 11:35:52 - Starting resource monitoring for PID 1186
+[0;34m[INFO][0m 2025-12-19 11:35:52 - Starting cleanup process...
+[0;34m[INFO][0m 2025-12-19 11:35:52 - Terminating main process 1186...
+[0;34m[INFO][0m 2025-12-19 11:35:52 - Waiting for graceful shutdown... (0s)
+[0;34m[INFO][0m 2025-12-19 11:35:53 - Starting cleanup process...
+[0;34m[INFO][0m 2025-12-19 11:35:54 - Cleanup completed
+[0;34m[INFO][0m 2025-12-19 11:37:28 - Logs will be written to: /app/logs/pipeline_20251219_113728.log
+[0;34m[INFO][0m 2025-12-19 11:37:28 - Checking system resources...
+[0;34m[INFO][0m 2025-12-19 11:37:28 - Container environment: true
+[0;34m[INFO][0m 2025-12-19 11:37:28 - Memory: 8.6%, Disk: 85%, Load: 1.88
+[0;34m[INFO][0m 2025-12-19 11:37:28 - Starting pipeline with lakes: cuk
+[0;34m[INFO][0m 2025-12-19 11:37:28 - Resource limits - CPU nice: 0, I/O class: 2, I/O priority: 6
+[0;34m[INFO][0m 2025-12-19 11:37:28 - Started pipeline with PID: 51
+[0;34m[INFO][0m 2025-12-19 11:37:28 - Set I/O priority: class 2, priority 6
+[0;34m[INFO][0m 2025-12-19 11:37:28 - Set CPU priority (nice): 0
+[0;34m[INFO][0m 2025-12-19 11:37:28 - Starting resource monitoring for PID 51
+[1;33m[WARN][0m 2025-12-19 11:58:30 - Memory pressure detected: 14.33%
+[1;33m[WARN][0m 2025-12-19 12:28:31 - Memory pressure detected: 10.97%
+[1;33m[WARN][0m 2025-12-19 18:33:49 - Memory pressure detected: 15.39%
+[1;33m[WARN][0m 2025-12-19 18:42:49 - Memory pressure detected: 39.03%
+[1;33m[WARN][0m 2025-12-19 21:25:57 - Memory pressure detected: 16.59%
+[1;33m[WARN][0m 2025-12-19 21:53:58 - Memory pressure detected: 17.39%
+[1;33m[WARN][0m 2025-12-19 21:56:58 - Memory pressure detected: 46.73%
+[1;33m[WARN][0m 2025-12-19 22:24:00 - Memory pressure detected: 72.13%
+[1;33m[WARN][0m 2025-12-19 22:25:00 - Memory pressure detected: 71.90%
+[1;33m[WARN][0m 2025-12-19 22:26:00 - Memory pressure detected: 76.00%
+[1;33m[WARN][0m 2025-12-19 22:48:01 - Memory pressure detected: 28.74%
+[1;33m[WARN][0m 2025-12-19 23:41:03 - Memory pressure detected: 62.31%
+[1;33m[WARN][0m 2025-12-19 23:42:03 - Memory pressure detected: 16.40%
+[1;33m[WARN][0m 2025-12-19 23:52:04 - Memory pressure detected: 74.51%
+[1;33m[WARN][0m 2025-12-19 23:53:04 - Memory pressure detected: 60.47%
+[1;33m[WARN][0m 2025-12-19 23:54:04 - Memory pressure detected: 71.97%
+[1;33m[WARN][0m 2025-12-19 23:55:04 - Memory pressure detected: 60.15%
+[1;33m[WARN][0m 2025-12-19 23:56:04 - Memory pressure detected: 64.99%
+[1;33m[WARN][0m 2025-12-19 23:57:04 - Memory pressure detected: 75.82%
+[1;33m[WARN][0m 2025-12-19 23:58:04 - Memory pressure detected: 73.51%
+[1;33m[WARN][0m 2025-12-19 23:59:04 - Memory pressure detected: 73.68%
+[1;33m[WARN][0m 2025-12-20 00:26:06 - Memory pressure detected: 66.32%
+[1;33m[WARN][0m 2025-12-20 00:27:06 - Memory pressure detected: 81.54%
+[1;33m[WARN][0m 2025-12-20 05:24:20 - Memory pressure detected: 10.85%
+[1;33m[WARN][0m 2025-12-20 06:22:23 - Memory pressure detected: 55.06%
+[1;33m[WARN][0m 2025-12-20 06:23:23 - Memory pressure detected: 60.48%
+[1;33m[WARN][0m 2025-12-20 06:34:24 - Memory pressure detected: 86.86%
+[1;33m[WARN][0m 2025-12-20 06:35:24 - Memory pressure detected: 65.02%
+[1;33m[WARN][0m 2025-12-20 06:36:24 - Memory pressure detected: 71.78%
+[1;33m[WARN][0m 2025-12-20 06:37:24 - Memory pressure detected: 67.98%
+[1;33m[WARN][0m 2025-12-20 06:38:24 - Memory pressure detected: 74.45%
+[1;33m[WARN][0m 2025-12-20 06:39:24 - Memory pressure detected: 76.13%
+[1;33m[WARN][0m 2025-12-20 06:40:24 - Memory pressure detected: 77.08%
+[1;33m[WARN][0m 2025-12-20 06:41:24 - Memory pressure detected: 57.70%
+[1;33m[WARN][0m 2025-12-20 07:06:25 - Memory pressure detected: 21.47%
+[1;33m[WARN][0m 2025-12-20 12:34:41 - Memory pressure detected: 57.14%
+[1;33m[WARN][0m 2025-12-20 12:35:41 - Memory pressure detected: 75.52%
+[1;33m[WARN][0m 2025-12-20 12:38:41 - Memory pressure detected: 50.06%
+[1;33m[WARN][0m 2025-12-20 12:50:42 - Memory pressure detected: 19.60%
+[1;33m[WARN][0m 2025-12-20 14:09:46 - Memory pressure detected: 24.29%
+[1;33m[WARN][0m 2025-12-20 15:21:49 - Memory pressure detected: 73.60%
+[1;33m[WARN][0m 2025-12-20 15:27:50 - Memory pressure detected: 38.74%
+[1;33m[WARN][0m 2025-12-20 16:37:53 - Memory pressure detected: 14.44%
+[1;33m[WARN][0m 2025-12-20 17:01:54 - Memory pressure detected: 16.30%
+[1;33m[WARN][0m 2025-12-20 18:07:57 - Memory pressure detected: 67.22%
+[1;33m[WARN][0m 2025-12-20 18:18:58 - Memory pressure detected: 79.97%
+[1;33m[WARN][0m 2025-12-20 18:19:58 - Memory pressure detected: 60.19%
+[1;33m[WARN][0m 2025-12-20 18:20:58 - Memory pressure detected: 62.53%
+[1;33m[WARN][0m 2025-12-20 18:21:58 - Memory pressure detected: 59.64%
+[1;33m[WARN][0m 2025-12-20 18:22:58 - Memory pressure detected: 58.73%
+[1;33m[WARN][0m 2025-12-20 18:23:58 - Memory pressure detected: 83.58%
+[1;33m[WARN][0m 2025-12-20 18:24:58 - Memory pressure detected: 76.26%
+[1;33m[WARN][0m 2025-12-20 18:25:58 - Memory pressure detected: 71.42%
+[1;33m[WARN][0m 2025-12-20 18:55:00 - Memory pressure detected: 31.70%
+[1;33m[WARN][0m 2025-12-21 00:05:15 - Memory pressure detected: 23.00%
+[1;33m[WARN][0m 2025-12-21 00:13:15 - Memory pressure detected: 12.39%
+[1;33m[WARN][0m 2025-12-21 00:17:15 - Memory pressure detected: 52.34%
+[1;33m[WARN][0m 2025-12-21 00:27:16 - Memory pressure detected: 15.47%
+[1;33m[WARN][0m 2025-12-21 01:02:17 - Memory pressure detected: 66.28%
+[1;33m[WARN][0m 2025-12-21 02:17:21 - Memory pressure detected: 12.23%
+[1;33m[WARN][0m 2025-12-21 02:41:22 - Memory pressure detected: 10.70%
+[1;33m[WARN][0m 2025-12-21 04:13:27 - Memory pressure detected: 20.77%
+[1;33m[WARN][0m 2025-12-21 05:40:31 - Memory pressure detected: 16.45%
+[1;33m[WARN][0m 2025-12-21 06:09:32 - Memory pressure detected: 13.29%
+[1;33m[WARN][0m 2025-12-21 06:44:34 - Memory pressure detected: 23.61%
+[1;33m[WARN][0m 2025-12-21 07:36:36 - Memory pressure detected: 11.92%
+[1;33m[WARN][0m 2025-12-21 07:42:37 - Memory pressure detected: 32.39%
+[1;33m[WARN][0m 2025-12-21 07:47:37 - Memory pressure detected: 10.25%
+[1;33m[WARN][0m 2025-12-21 07:53:37 - Memory pressure detected: 11.14%
+[1;33m[WARN][0m 2025-12-21 07:59:38 - Memory pressure detected: 21.81%
+[1;33m[WARN][0m 2025-12-21 08:01:38 - Memory pressure detected: 38.63%
+[1;33m[WARN][0m 2025-12-21 08:04:38 - Memory pressure detected: 11.67%
+[1;33m[WARN][0m 2025-12-21 08:12:38 - Memory pressure detected: 27.10%
+[1;33m[WARN][0m 2025-12-21 08:15:38 - Memory pressure detected: 13.34%
+[1;33m[WARN][0m 2025-12-21 08:17:38 - Memory pressure detected: 15.50%
+[1;33m[WARN][0m 2025-12-21 09:22:42 - Memory pressure detected: 67.11%
+[1;33m[WARN][0m 2025-12-21 09:26:42 - Memory pressure detected: 61.47%
+[1;33m[WARN][0m 2025-12-21 09:34:42 - Memory pressure detected: 11.10%
+[1;33m[WARN][0m 2025-12-21 09:42:43 - Memory pressure detected: 15.88%
+[1;33m[WARN][0m 2025-12-21 09:50:43 - Memory pressure detected: 12.65%
+[1;33m[WARN][0m 2025-12-21 10:32:45 - Memory pressure detected: 32.77%
+[1;33m[WARN][0m 2025-12-21 11:16:47 - Memory pressure detected: 19.92%
+[1;33m[WARN][0m 2025-12-21 11:36:48 - Memory pressure detected: 13.57%
+[1;33m[WARN][0m 2025-12-21 11:55:49 - Memory pressure detected: 11.01%
+[1;33m[WARN][0m 2025-12-21 12:24:50 - Memory pressure detected: 16.64%
+[1;33m[WARN][0m 2025-12-21 12:30:51 - Memory pressure detected: 12.49%
+[1;33m[WARN][0m 2025-12-21 12:32:51 - Memory pressure detected: 23.80%
+[1;33m[WARN][0m 2025-12-21 12:36:51 - Memory pressure detected: 48.37%
+[1;33m[WARN][0m 2025-12-21 12:57:52 - Memory pressure detected: 16.46%
+[1;33m[WARN][0m 2025-12-21 13:06:52 - Memory pressure detected: 54.27%
+[1;33m[WARN][0m 2025-12-21 13:23:53 - Memory pressure detected: 34.95%
+[1;33m[WARN][0m 2025-12-21 13:32:54 - Memory pressure detected: 23.25%
+[1;33m[WARN][0m 2025-12-21 14:21:56 - Memory pressure detected: 16.18%
+[1;33m[WARN][0m 2025-12-21 14:36:57 - Memory pressure detected: 17.07%
+[1;33m[WARN][0m 2025-12-21 14:59:58 - Memory pressure detected: 13.18%
+[1;33m[WARN][0m 2025-12-21 15:30:59 - Memory pressure detected: 10.35%
+[1;33m[WARN][0m 2025-12-21 16:41:03 - Memory pressure detected: 27.99%
+[1;33m[WARN][0m 2025-12-21 17:32:05 - Memory pressure detected: 35.93%
+[1;33m[WARN][0m 2025-12-21 17:51:06 - Memory pressure detected: 10.12%
+[1;33m[WARN][0m 2025-12-21 18:25:08 - Memory pressure detected: 18.01%
+[1;33m[WARN][0m 2025-12-21 18:45:09 - Memory pressure detected: 33.60%
+[1;33m[WARN][0m 2025-12-21 18:52:09 - Memory pressure detected: 22.30%
+[1;33m[WARN][0m 2025-12-21 19:02:10 - Memory pressure detected: 16.98%
+[1;33m[WARN][0m 2025-12-21 19:04:10 - Memory pressure detected: 23.23%
+[1;33m[WARN][0m 2025-12-21 19:09:10 - Memory pressure detected: 24.20%
+[1;33m[WARN][0m 2025-12-21 19:15:10 - Memory pressure detected: 58.14%
+[1;33m[WARN][0m 2025-12-21 19:25:11 - Memory pressure detected: 32.32%
+[1;33m[WARN][0m 2025-12-21 20:07:13 - Memory pressure detected: 46.59%
+[1;33m[WARN][0m 2025-12-21 20:21:14 - Memory pressure detected: 16.42%
+[1;33m[WARN][0m 2025-12-21 20:48:15 - Memory pressure detected: 28.47%
+[1;33m[WARN][0m 2025-12-21 20:50:15 - Memory pressure detected: 51.07%
+[1;33m[WARN][0m 2025-12-21 20:56:15 - Memory pressure detected: 35.17%
+[1;33m[WARN][0m 2025-12-21 20:58:15 - Memory pressure detected: 16.71%
+[1;33m[WARN][0m 2025-12-21 21:52:18 - Memory pressure detected: 15.51%
+[1;33m[WARN][0m 2025-12-21 22:02:18 - Memory pressure detected: 18.81%
+[1;33m[WARN][0m 2025-12-21 23:03:21 - Memory pressure detected: 66.54%
+[1;33m[WARN][0m 2025-12-21 23:17:22 - Memory pressure detected: 75.12%
+[1;33m[WARN][0m 2025-12-21 23:30:23 - Memory pressure detected: 32.78%
+[1;33m[WARN][0m 2025-12-21 23:34:23 - Memory pressure detected: 35.48%
+[1;33m[WARN][0m 2025-12-21 23:45:23 - Memory pressure detected: 60.68%
+[1;33m[WARN][0m 2025-12-21 23:54:24 - Memory pressure detected: 25.62%
+[1;33m[WARN][0m 2025-12-22 00:47:26 - Memory pressure detected: 13.11%
+[1;33m[WARN][0m 2025-12-22 00:58:27 - Memory pressure detected: 72.71%
+[1;33m[WARN][0m 2025-12-22 01:04:27 - Memory pressure detected: 23.47%
+[1;33m[WARN][0m 2025-12-22 01:23:28 - Memory pressure detected: 24.92%
+[1;33m[WARN][0m 2025-12-22 01:26:28 - Memory pressure detected: 19.11%
+[1;33m[WARN][0m 2025-12-22 01:37:29 - Memory pressure detected: 55.33%
+[1;33m[WARN][0m 2025-12-22 01:47:29 - Memory pressure detected: 15.11%
+[1;33m[WARN][0m 2025-12-22 01:59:30 - Memory pressure detected: 11.56%
+[1;33m[WARN][0m 2025-12-22 02:10:30 - Memory pressure detected: 17.37%
+[1;33m[WARN][0m 2025-12-22 02:30:31 - Memory pressure detected: 68.83%
+[1;33m[WARN][0m 2025-12-22 02:32:32 - Memory pressure detected: 19.29%
+[1;33m[WARN][0m 2025-12-22 02:49:32 - Memory pressure detected: 18.92%
+[1;33m[WARN][0m 2025-12-22 07:28:46 - Memory pressure detected: 35.56%
+[1;33m[WARN][0m 2025-12-22 08:28:49 - Memory pressure detected: 18.11%
+[1;33m[WARN][0m 2025-12-22 08:30:49 - Memory pressure detected: 11.10%
+[1;33m[WARN][0m 2025-12-22 08:45:50 - Memory pressure detected: 23.47%
+[1;33m[WARN][0m 2025-12-22 10:15:54 - Memory pressure detected: 13.14%
+[1;33m[WARN][0m 2025-12-22 10:16:54 - Memory pressure detected: 13.62%
+[1;33m[WARN][0m 2025-12-22 10:26:54 - Memory pressure detected: 10.26%
+[1;33m[WARN][0m 2025-12-22 10:58:56 - Memory pressure detected: 54.96%
+[1;33m[WARN][0m 2025-12-22 12:13:00 - Memory pressure detected: 30.81%
+[1;33m[WARN][0m 2025-12-22 12:18:00 - Memory pressure detected: 27.33%
+[1;33m[WARN][0m 2025-12-22 13:21:03 - Memory pressure detected: 24.54%
+[1;33m[WARN][0m 2025-12-22 14:06:05 - Memory pressure detected: 22.54%
+[1;33m[WARN][0m 2025-12-22 14:44:07 - Memory pressure detected: 67.22%
+[1;33m[WARN][0m 2025-12-22 15:18:08 - Memory pressure detected: 11.34%
+[1;33m[WARN][0m 2025-12-22 15:57:10 - Memory pressure detected: 10.50%
+[1;33m[WARN][0m 2025-12-22 16:58:13 - Memory pressure detected: 34.66%
+[1;33m[WARN][0m 2025-12-22 17:00:13 - Memory pressure detected: 53.06%
+[1;33m[WARN][0m 2025-12-22 17:49:16 - Memory pressure detected: 34.19%
+[1;33m[WARN][0m 2025-12-22 17:52:16 - Memory pressure detected: 14.90%
+[1;33m[WARN][0m 2025-12-22 18:32:18 - Memory pressure detected: 27.39%
+[0;31m[ERROR][0m 2025-12-22 18:50:24 - Pipeline failed with exit code: 1
+[0;34m[INFO][0m 2025-12-22 18:50:24 - Starting cleanup process...
+[0;34m[INFO][0m 2025-12-22 18:50:26 - Cleanup completed

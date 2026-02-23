@@ -1,0 +1,10 @@
+[
+    {
+        "features": ["Province", "Candidate name"],
+        "target": "Percent",
+        "target_type": "continuous",
+        "categorical_features": ["Province", "Candidate name"],
+        "numeric_features": [],
+        "query_col": "Province"
+    }
+]

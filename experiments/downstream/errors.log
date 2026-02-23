@@ -1,0 +1,131 @@
+Error for combination cuk_arrest_arda: 'NoneType' object has no attribute 'get'
+Error for combination cuk_arrest_autofeat: Node with id arrest.csv not found in join paths dataframe.
+Error for combination cuk_hospital_backward: [36mray::BackwardElimination.run()[39m (pid=1667986, ip=192.168.5.8, actor_id=60ab1f4abec35bc78d6822cb01000000, repr=<augmentation.feature_selection.algorithms.greedy.BackwardElimination object at 0x7fd09457e990>)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/algorithms/greedy.py", line 439, in run
+    base_score = self._first_iteration(model_instance, self.metric, **params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/algorithms/greedy.py", line 38, in _first_iteration
+    model.fit_predict(**kwargs)
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/models.py", line 107, in fit_predict
+    Ls = np.linalg.cholesky(cov_pooled)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/.venv/lib/python3.12/site-packages/numpy/linalg/_linalg.py", line 848, in cholesky
+    r = gufunc(a, signature=signature)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/.venv/lib/python3.12/site-packages/numpy/linalg/_linalg.py", line 107, in _raise_linalgerror_nonposdef
+    raise LinAlgError("Matrix is not positive definite")
+numpy.linalg.LinAlgError: Matrix is not positive definite
+Error for combination cuk_jobs_arda: SVD did not converge
+Error for combination gittables_pageviews_arda: SVD did not converge
+Error for combination gittables_food_backward: [36mray::BackwardElimination.run()[39m (pid=1733068, ip=192.168.5.8, actor_id=93faf2154140888c5064c7e801000000, repr=<augmentation.feature_selection.algorithms.greedy.BackwardElimination object at 0x76bf40512f00>)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/algorithms/greedy.py", line 439, in run
+    base_score = self._first_iteration(model_instance, self.metric, **params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/algorithms/greedy.py", line 38, in _first_iteration
+    model.fit_predict(**kwargs)
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/models.py", line 107, in fit_predict
+    Ls = np.linalg.cholesky(cov_pooled)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/.venv/lib/python3.12/site-packages/numpy/linalg/_linalg.py", line 848, in cholesky
+    r = gufunc(a, signature=signature)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/.venv/lib/python3.12/site-packages/numpy/linalg/_linalg.py", line 107, in _raise_linalgerror_nonposdef
+    raise LinAlgError("Matrix is not positive definite")
+numpy.linalg.LinAlgError: Matrix is not positive definite
+Error for combination nyc_trees_backward: [36mray::BackwardElimination.run()[39m (pid=1996155, ip=192.168.5.8, actor_id=c9c4c851414ab6caa54de0f601000000, repr=<augmentation.feature_selection.algorithms.greedy.BackwardElimination object at 0x7ba48d8272f0>)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/algorithms/greedy.py", line 439, in run
+    base_score = self._first_iteration(model_instance, self.metric, **params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/algorithms/greedy.py", line 38, in _first_iteration
+    model.fit_predict(**kwargs)
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/models.py", line 107, in fit_predict
+    Ls = np.linalg.cholesky(cov_pooled)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/.venv/lib/python3.12/site-packages/numpy/linalg/_linalg.py", line 848, in cholesky
+    r = gufunc(a, signature=signature)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/.venv/lib/python3.12/site-packages/numpy/linalg/_linalg.py", line 107, in _raise_linalgerror_nonposdef
+    raise LinAlgError("Matrix is not positive definite")
+numpy.linalg.LinAlgError: Matrix is not positive definite
+Error for combination gittables_pageviews_arda: SVD did not converge
+Error for combination gittables_food_backward: [36mray::BackwardElimination.run()[39m (pid=2039327, ip=192.168.5.8, actor_id=65051dcb9df97b4e195dd28901000000, repr=<augmentation.feature_selection.algorithms.greedy.BackwardElimination object at 0x765b815a7470>)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/algorithms/greedy.py", line 439, in run
+    base_score = self._first_iteration(model_instance, self.metric, **params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/algorithms/greedy.py", line 38, in _first_iteration
+    model.fit_predict(**kwargs)
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/models.py", line 107, in fit_predict
+    Ls = np.linalg.cholesky(cov_pooled)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/.venv/lib/python3.12/site-packages/numpy/linalg/_linalg.py", line 848, in cholesky
+    r = gufunc(a, signature=signature)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/.venv/lib/python3.12/site-packages/numpy/linalg/_linalg.py", line 107, in _raise_linalgerror_nonposdef
+    raise LinAlgError("Matrix is not positive definite")
+numpy.linalg.LinAlgError: Matrix is not positive definite
+Error for combination cuk_arrest_backward: [36mray::BackwardElimination.run()[39m (pid=2067151, ip=192.168.5.8, actor_id=4ad5708da3704577a982706401000000, repr=<augmentation.feature_selection.algorithms.greedy.BackwardElimination object at 0x726926a96ae0>)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/algorithms/greedy.py", line 439, in run
+    base_score = self._first_iteration(model_instance, self.metric, **params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/algorithms/greedy.py", line 38, in _first_iteration
+    model.fit_predict(**kwargs)
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/models.py", line 107, in fit_predict
+    Ls = np.linalg.cholesky(cov_pooled)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/.venv/lib/python3.12/site-packages/numpy/linalg/_linalg.py", line 848, in cholesky
+    r = gufunc(a, signature=signature)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/.venv/lib/python3.12/site-packages/numpy/linalg/_linalg.py", line 107, in _raise_linalgerror_nonposdef
+    raise LinAlgError("Matrix is not positive definite")
+numpy.linalg.LinAlgError: Matrix is not positive definite
+Error for combination cuk_arrest_arda: 'NoneType' object has no attribute 'get'
+Error for combination cuk_arrest_autofeat: Node with id arrest.csv not found in join paths dataframe.
+Error for combination cuk_elections_backward: [36mray::BackwardElimination.run()[39m (pid=2072060, ip=192.168.5.8, actor_id=6d3a852f24bbc34a2fb1c7e801000000, repr=<augmentation.feature_selection.algorithms.greedy.BackwardElimination object at 0x71803a702d50>)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/algorithms/greedy.py", line 400, in run
+    base_score = self._first_iteration(model_instance, self.metric, **params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/algorithms/greedy.py", line 39, in _first_iteration
+    return model.score(metric, **kwargs).item()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/base/model.py", line 59, in score
+    raise LinAlgError(cond_number)
+augmentation.utils.exceptions.LinAlgError: Linear algebra error: condition number 6.604193240515424e+17 is too high. Near singular matrix or ill-conditioned matrix.
+Error for combination cuk_hospital_backward: [36mray::BackwardElimination.run()[39m (pid=2088541, ip=192.168.5.8, actor_id=3c2d2c6b55afb1e3dd6b712c01000000, repr=<augmentation.feature_selection.algorithms.greedy.BackwardElimination object at 0x7b693ef9b140>)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/algorithms/greedy.py", line 439, in run
+    base_score = self._first_iteration(model_instance, self.metric, **params)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/algorithms/greedy.py", line 38, in _first_iteration
+    model.fit_predict(**kwargs)
+  File "/home/fedor/Fast_Data_Discovery/augmentation/feature_selection/models.py", line 107, in fit_predict
+    Ls = np.linalg.cholesky(cov_pooled)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/.venv/lib/python3.12/site-packages/numpy/linalg/_linalg.py", line 848, in cholesky
+    r = gufunc(a, signature=signature)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/fedor/Fast_Data_Discovery/.venv/lib/python3.12/site-packages/numpy/linalg/_linalg.py", line 107, in _raise_linalgerror_nonposdef
+    raise LinAlgError("Matrix is not positive definite")
+numpy.linalg.LinAlgError: Matrix is not positive definite
+Error for combination cuk_jobs_arda: SVD did not converge
+Error for combination cuk_elections_qcr: '[\'ï»¿""REF_DATE""\'] not in index'
+Error for combination cuk_elections_qcr: '[\'ï»¿""REF_DATE""\'] not in index'

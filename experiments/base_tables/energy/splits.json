@@ -1,0 +1,10 @@
+[
+    {
+        "features": ["block", "agency", "epa_benchmarked_as"],
+        "target": "ghg_intensity_2013",
+        "target_type": "continuous",
+        "categorical_features": ["block", "agency", "epa_benchmarked_as"],
+        "numeric_features": [],
+        "query_col": "block"
+    }
+]

@@ -1,0 +1,10 @@
+[
+    {
+        "features": ["food_groups_en", "nutriscore_score", "energy-kcal_100g", "fat_100g", "saturated-fat_100g", "carbohydrates_100g", "sugars_100g", "proteins_100g", "salt_100g", "sodium_100g", "nutrition-score-fr_100g"],
+        "target": "ecoscore_grade",
+        "target_type": "multiclass",
+        "categorical_features": ["food_groups_en"],
+        "numeric_features": ["nutriscore_score", "energy-kcal_100g", "fat_100g", "saturated-fat_100g", "carbohydrates_100g", "sugars_100g", "proteins_100g", "salt_100g", "sodium_100g", "nutrition-score-fr_100g"],
+        "query_col": "food_groups_en"
+    }
+]

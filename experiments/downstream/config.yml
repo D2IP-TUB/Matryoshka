@@ -1,0 +1,303 @@
+lakes:
+  nyc:
+    lake_table_sep: "\t"
+    data_lake_path: /mnt/data1/lakes/nyc/extracted
+    feature_selection_table_name: nyc_matryoshka_fs_index
+    overlap_table_name: nyc_matryoshka_overlap_index
+    qcr_table_name: nyc_qcr_index
+    base_tables:
+      - fire:
+          - task: regression
+          - join_paths_df_path: experiments/base_tables/fire/join_paths.csv
+            query_column_name: zip_code
+            target_column_name: total_incident_duration
+            base_node_id: fire.csv
+            query_table_path: experiments/base_tables/fire/fire.csv
+      - energy:
+          - task: regression
+          - join_paths_df_path: experiments/base_tables/energy/join_paths.csv
+            query_column_name: block
+            target_column_name: ghg_intensity_2013
+            base_node_id: energy.csv
+            query_table_path: experiments/base_tables/energy/energy.csv
+      - trees:
+          - task: classification
+          - join_paths_df_path: experiments/base_tables/trees/join_paths.csv
+            query_column_name: street
+            target_column_name: condition
+            base_node_id: trees.csv
+            query_table_path: experiments/base_tables/trees/trees.csv
+      - inspections:
+          - task: classification
+          - join_paths_df_path: experiments/base_tables/inspections/join_paths.csv
+            query_column_name: STREET
+            target_column_name: GRADE
+            base_node_id: inspections.csv
+            query_table_path: experiments/base_tables/inspections/inspections.csv
+      # - crime:
+      #     - task: classification
+      #     - join_paths_df_path: experiments/base_tables/crime/join_paths.csv
+      #       query_column_name: TRACTCE
+      #       target_column_name: crime_total
+      #       base_node_id: crime.csv
+      #       query_table_path: experiments/base_tables/crime/crime.csv
+      # - flight:
+      #     - task: regression
+      #     - join_paths_df_path: experiments/base_tables/flight/join_paths.csv
+      #       query_column_name: Leg_1_Arrival_Airport_ID
+      #       target_column_name: Price_USD
+      #       base_node_id: flight.csv
+      #       query_table_path: experiments/base_tables/flight/flight.csv
+      # - airbnb:
+      #     - task: classification
+      #     - join_paths_df_path: experiments/base_tables/airbnb/join_paths.csv
+      #       query_column_name: neighbourhood
+      #       target_column_name: rating
+      #       base_node_id: airbnb.csv
+      #       query_table_path: experiments/base_tables/airbnb/airbnb.csv
+  cuk:
+    lake_table_sep: ','
+    data_lake_path: /mnt/data1/lakes/canada_us_uk_open_data/extracted
+    feature_selection_table_name: cuk_matryoshka_fs_index
+    overlap_table_name: cuk_matryoshka_overlap_index
+    qcr_table_name: cuk_qcr_index
+    base_tables:
+      - arrest:
+          - task: classification
+          - join_paths_df_path: experiments/base_tables/arrest/join_paths.csv
+            query_column_name: Zipcode
+            target_column_name: Type_of_Arrest
+            base_node_id: arrest.csv
+            query_table_path: experiments/base_tables/arrest/arrest.csv
+      - elections:
+          - task: regression
+          - join_paths_df_path: experiments/base_tables/elections/join_paths.csv
+            query_column_name: Province
+            target_column_name: Percent
+            base_node_id: elections.csv
+            query_table_path: experiments/base_tables/elections/elections.csv
+      - hospital:
+          - task: classification
+          - join_paths_df_path: experiments/base_tables/hospital/join_paths.csv
+            query_column_name: County of Program Location
+            target_column_name: Primary Substance Group
+            base_node_id: hospital.csv
+            query_table_path: experiments/base_tables/hospital/hospital.csv
+      - jobs:
+          - task: regression
+          - join_paths_df_path: experiments/base_tables/jobs/join_paths.csv
+            query_column_name: Office Region
+            target_column_name: Payscale Maximum (Â£)
+            base_node_id: jobs.csv
+            query_table_path: experiments/base_tables/jobs/jobs.csv
+      - realestate:
+          - task: regression
+          - join_paths_df_path: experiments/base_tables/realestate/join_paths.csv
+            query_column_name: City
+            target_column_name: Price
+            base_node_id: realestate.csv
+            query_table_path: experiments/base_tables/realestate/realestate.csv
+      # - housing:
+      #     - task: classification
+      #     - join_paths_df_path: experiments/base_tables/housing/join_paths.csv
+      #       query_column_name: Town/City
+      #       target_column_name: Old/New
+      #       base_node_id: housing.csv
+      #       query_table_path: experiments/base_tables/housing/housing.csv
+      # - flood:
+      #     - task: classification
+      #     - join_paths_df_path: experiments/base_tables/flood/join_paths.csv
+      #       query_column_name: postcode
+      #       target_column_name: flood_risk
+      #       base_node_id: flood.csv
+      #       query_table_path: experiments/base_tables/flood/flood.csv
+
+  gittables:
+    lake_table_sep: ','
+    data_lake_path: /mnt/data1/lakes/gittables/extracted
+    feature_selection_table_name: gittables_matryoshka_fs_index
+    overlap_table_name: gittables_matryoshka_overlap_index
+    qcr_table_name: gittables_qcr_index
+    base_tables:
+      - vgsales:
+          - task: regression
+          - join_paths_df_path: experiments/base_tables/vgsales/join_paths.csv
+            query_column_name: Publisher
+            target_column_name: Global_Sales
+            base_node_id: vgsales.csv
+            query_table_path: experiments/base_tables/vgsales/vgsales.csv
+      - pageviews:
+          - task: regression
+          - join_paths_df_path: experiments/base_tables/pageviews/join_paths.csv
+            query_column_name: name
+            target_column_name: TotalPageViews
+            base_node_id: pageviews.csv
+            query_table_path: experiments/base_tables/pageviews/pageviews.csv
+      - food:
+          - task: classification
+          - join_paths_df_path: experiments/base_tables/food/join_paths.csv
+            query_column_name: food_groups_en
+            target_column_name: ecoscore_grade
+            base_node_id: food.csv
+            query_table_path: experiments/base_tables/food/food.csv
+      - imdb:
+          - task: regression
+          - join_paths_df_path: experiments/base_tables/imdb/join_paths.csv
+            query_column_name: primaryTitle
+            target_column_name: averageRating
+            base_node_id: imdb.csv
+            query_table_path: experiments/base_tables/imdb/imdb.csv
+
+  lakebench:
+    lake_table_sep: ','
+    data_lake_path: /mnt/data1/lakes/lakebench/extracted
+    feature_selection_table_name: lakebench_matryoshka_fs_index
+    overlap_table_name: lakebench_matryoshka_overlap_index
+    qcr_table_name: lakebench_qcr_index
+    base_tables:
+      - vgsales:
+          - task: regression
+          - join_paths_df_path: experiments/base_tables/vgsales/join_paths.csv
+            query_column_name: Name
+            target_column_name: Global_Sales
+            base_node_id: vgsales.csv
+      - pageviews:
+          - task: regression
+          - join_paths_df_path: experiments/base_tables/pageviews/join_paths.csv
+            query_column_name: name
+            target_column_name: TotalPageViews
+            base_node_id: pageviews.csv
+      - food:
+          - task: classification
+          - join_paths_df_path: experiments/base_tables/food/join_paths.csv
+            query_column_name: food_groups_en
+            target_column_name: ecoscore_grade
+            base_node_id: food.csv
+      - imdb:
+          - task: regression
+          - join_paths_df_path: experiments/base_tables/imdb/join_paths.csv
+            query_column_name: primaryTitle
+            target_column_name: averageRating
+            base_node_id: imdb.csv
+
+regression:
+  forward:
+    baseline: false
+    task: regression
+    ranking: passthrough
+    model: RegressionQR
+    strategy: ForwardSelection
+    params:
+      tol: 0.01
+      metric: mse
+    
+  backward:
+    baseline: false
+    task: regression
+    ranking: correlation
+    model: RegressionQR
+    strategy: BackwardElimination
+    params:
+      tol: 0.01
+      metric: mse
+
+  lasso:
+    baseline: false
+    task: regression
+    model: LinRegL1
+    strategy: LassoFeatureSelector
+    params:
+      alphas:
+        - 100.0
+        - 10.0
+        - 0.1
+        - 0.001
+      metric: mse
+      cv: 3
+
+  arda:
+    strategy: ArdaAugmenter
+    baseline: true
+    params:
+      regression: true
+      sample_size: 3000
+
+  qcr:
+    strategy: QcrAugmenter
+    baseline: true
+    params:
+      top_k: 50
+
+  kitana:
+    strategy: KitanaAugmenter
+    baseline: true
+    params:
+      n_iter: 10
+
+  autofeat:
+    strategy: AutofeatAugmenter
+    baseline: true
+    params:
+      top_k: 15
+      sample_size: 3000
+
+classification:
+  forward:
+    baseline: false
+    task: classification
+    ranking: passthrough
+    model: ClassificationCholesky
+    strategy: ForwardSelection
+    params:
+      tol: 0.3
+      metric: average_mahalanobis
+
+  backward:
+    baseline: false
+    task: classification
+    ranking: eta
+    model: ClassificationCholesky
+    strategy: BackwardElimination
+    params:
+      tol: 0.3
+      metric: average_mahalanobis
+
+  lasso:
+    baseline: false
+    task: classification
+    model: LogRegL1
+    strategy: LassoFeatureSelector
+    params:
+      alphas:
+        - 100.0
+        - 10.0
+        - 0.1
+        - 0.001
+      metric: accuracy
+      cv: 3
+  
+  arda:
+    strategy: ArdaAugmenter
+    baseline: true
+    params:
+      regression: false
+      sample_size: 3000
+
+  qcr:
+    strategy: QcrAugmenter
+    baseline: true
+    params:
+      top_k: 50
+
+  kitana:
+    strategy: KitanaAugmenter
+    baseline: true
+    params:
+      n_iter: 10
+  
+  autofeat:
+    strategy: AutofeatAugmenter
+    baseline: true
+    params:
+      top_k: 15
+      sample_size: 3000

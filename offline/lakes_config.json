@@ -1,0 +1,46 @@
+{
+    "nyc":
+        {
+            "data_dir": "/app/data/nyc",
+            "feature_selection_table_name": "nyc_matryoshka_index",
+            "overlap_table_name": "nyc_matryoshka_overlap_index",
+            "batch_size": 1,
+            "max_workers": 1,
+            "from_tar_archive": true,
+            "feature_extraction": false,
+            "table_index": 0
+        },
+    "cuk_local":
+        {
+            "data_dir": "/app/data/cuk_local",
+            "feature_selection_table_name": "cuk_matryoshka_fs_index",
+            "overlap_table_name": "cuk_matryoshka_overlap_index",
+            "batch_size": 1,
+            "max_workers": 1,
+            "from_tar_archive": false,
+            "feature_extraction": false,
+            "table_index": 6310
+        },
+    "gittables":
+        {
+            "data_dir": "/app/data/gittables",
+            "feature_selection_table_name": "GitTables_matryoshka_fs_index_key_oriented",
+            "overlap_table_name": "GitTables_matryoshka_overlap_index_key_oriented",
+            "max_workers": 4,
+            "from_tar_archive": false,
+            "batch_size": null,
+            "feature_extraction": false,
+            "table_index": 0
+        },
+    "cuk":
+        {
+            "data_dir": "/app/data/canada_us_uk_open_data",
+            "feature_selection_table_name": "cuk_matryoshka_fs_index",
+            "overlap_table_name": "cuk_matryoshka_overlap_index",
+            "batch_size": 1,
+            "max_workers": 1,
+            "from_tar_archive": false,
+            "feature_extraction": false,
+            "table_index": 0
+        }
+}

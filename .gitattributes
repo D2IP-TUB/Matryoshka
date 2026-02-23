@@ -1,0 +1,5 @@
+*selection.log filter=lfs diff=lfs merge=lfs -text
+*.csv filter=lfs diff=lfs merge=lfs -text
+*.pkl filter=lfs diff=lfs merge=lfs -text
+*.bin filter=lfs diff=lfs merge=lfs -text
+*.ubj filter=lfs diff=lfs merge=lfs -text

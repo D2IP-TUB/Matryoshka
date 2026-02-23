@@ -1,0 +1,13 @@
+db:
+    dbname: fast_data_discovery
+    user: postgres
+    password: postgres
+    host: localhost
+    port: 5432
+
+ssh:
+    host: localhost
+    port: 22
+    user: postgres
+    key: /path/to/your/private/key
+    key_password: your_key_passphrase

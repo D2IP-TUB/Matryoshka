@@ -1,0 +1,34 @@
+[
+    {
+        "features": ["Zipcode", "Age", "Drugs_or_Alcohol_Present", "Weapon_Present", "Disposition"],
+        "target": "Type_of_Arrest",
+        "target_type": "multiclass",
+        "categorical_features": ["Zipcode", "Drugs_or_Alcohol_Present", "Weapon_Present", "Disposition"],
+        "numeric_features": ["Age"],
+        "query_col": "Zipcode"
+    },
+    {
+        "features": ["Street", "Age", "Drugs_or_Alcohol_Present", "Weapon_Present", "Disposition"],
+        "target": "Type_of_Arrest",
+        "target_type": "multiclass",
+        "categorical_features": ["Street", "Drugs_or_Alcohol_Present", "Weapon_Present", "Disposition"],
+        "numeric_features": ["Age"],
+        "query_col": "Street"
+    },
+    {
+        "features": ["City", "Age", "Drugs_or_Alcohol_Present", "Weapon_Present", "Disposition"],
+        "target": "Type_of_Arrest",
+        "target_type": "multiclass",
+        "categorical_features": ["City", "Drugs_or_Alcohol_Present", "Weapon_Present", "Disposition"],
+        "numeric_features": ["Age"],
+        "query_col": "City"
+    },
+    {
+        "features": ["State", "Age", "Drugs_or_Alcohol_Present", "Weapon_Present", "Disposition"],
+        "target": "Type_of_Arrest",
+        "target_type": "multiclass",
+        "categorical_features": ["State", "Drugs_or_Alcohol_Present", "Weapon_Present", "Disposition"],
+        "numeric_features": ["Age"],
+        "query_col": "State"
+    }
+]

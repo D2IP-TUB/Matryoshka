@@ -1,0 +1,10 @@
+[
+    {
+        "features": ["TRACTCE", "month", "sr311_total", "Blocked Driveway", "HEAT/HOT WATER", "Illegal Parking", "Noise - Residential", "Noise - Street/Sidewalk", "Noise - Vehicle", "Request Large Bulky Item Collection", "Street Condition", "UNSANITARY CONDITION", "Water System", "dob_permits_total", "dob_est_cost_sum"],
+        "target": "crime_total",
+        "target_type": "multiclass",
+        "categorical_features": ["TRACTCE", "month"],
+        "numeric_features": ["sr311_total", "Blocked Driveway", "HEAT/HOT WATER", "Illegal Parking", "Noise - Residential", "Noise - Street/Sidewalk", "Noise - Vehicle", "Request Large Bulky Item Collection", "Street Condition", "UNSANITARY CONDITION", "Water System", "dob_permits_total", "dob_est_cost_sum"],
+        "query_col": "TRACTCE"
+    }
+]

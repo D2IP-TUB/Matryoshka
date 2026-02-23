@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/app/main.py", line 17, in <module>
+    from augmentation.index import ExhaustiveIndex
+  File "/app/augmentation/index.py", line 23, in <module>
+    from augmentation.utils.database.query_processing import DBHandler
+  File "/app/augmentation/utils/database/query_processing.py", line 16, in <module>
+    with open(config_path) as f:
+         ^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/app/augmentation/utils/database/db_config.yaml'

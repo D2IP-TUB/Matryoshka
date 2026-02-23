@@ -1,0 +1,10 @@
+[
+    {
+        "features": ["incident_date_time", "zip_code", "property_use_desc", "fire_box", "units_onscene"],
+        "target": "total_incident_duration",
+        "target_type": "continuous",
+        "categorical_features": ["incident_date_time", "zip_code", "property_use_desc"],
+        "numeric_features": ["units_onscene", "fire_box"],
+        "query_col": "zip_code"
+    }
+]

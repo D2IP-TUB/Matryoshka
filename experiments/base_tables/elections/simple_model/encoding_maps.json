@@ -1,0 +1,17 @@
+{
+  "Province": {
+    "alberta": 12.499615384615385,
+    "britishcolumbia": 12.499615384615385,
+    "manitoba": 12.5,
+    "newbrunswick": 12.500288461538462,
+    "newfoundlandandlabrador": 12.500576923076922,
+    "northwestterritories": 12.499711538461538,
+    "novascotia": 12.499711538461538,
+    "nunavut": 12.5,
+    "ontario": 12.500096153846155,
+    "princeedwardisland": 12.50048076923077,
+    "quebec": 12.499615384615385,
+    "saskatchewan": 12.500576923076922,
+    "yukon": 12.499903846153845
+  }
+}

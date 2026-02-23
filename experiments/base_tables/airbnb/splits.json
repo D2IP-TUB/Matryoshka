@@ -1,0 +1,10 @@
+[
+    {
+        "features": ["neighbourhood", "latitude", "longitude", "room_type", "price", "minimum_nights", "number_of_reviews", "last_review", "reviews_per_month", "calculated_host_listings_count", "availability_365", "number_of_reviews_ltm", "license", "bedrooms", "beds", "baths"],
+        "target": "rating",
+        "target_type": "multiclass",
+        "categorical_features": ["neighbourhood", "room_type", "last_review", "license"],
+        "numeric_features": ["latitude", "longitude", "price", "minimum_nights", "number_of_reviews", "reviews_per_month", "calculated_host_listings_count", "availability_365", "number_of_reviews_ltm", "bedrooms", "beds", "baths"],
+        "query_col": "neighbourhood"
+    }
+]
