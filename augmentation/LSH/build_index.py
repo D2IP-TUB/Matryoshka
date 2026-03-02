@@ -13,8 +13,10 @@ import gc
 import os
 import pickle
 import sys
+import tempfile
 import time
-from multiprocessing import Pool, cpu_count
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from multiprocessing import cpu_count
 from typing import Dict, List, Tuple, Any, Optional
 
 import numpy as np
@@ -26,53 +28,67 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from datasketch import MinHash, MinHashLSHEnsemble
 
+# Module-level temp dir, set by main process before spawning workers
+_TEMP_DIR = None
 
-def process_file(args: Tuple[str, int, int, str, str]) -> List[Tuple[str, str, bytes, int]]:
+
+def process_file_batch(args: Tuple[List[str], int, int, str, str, str]) -> str:
     """
-    Process a single file and extract MinHash signatures for each column.
+    Process a batch of files and write results to a temporary pickle file.
 
-    Returns compact results: hashvalues as raw bytes instead of full MinHash
-    objects. This reduces IPC overhead by ~66% since the permutation arrays
-    (identical for all MinHashes) are not sent through pipes.
+    Writing to disk instead of returning through IPC pipes avoids the
+    pipe-buffer deadlock that occurs with many workers and large results.
 
     Args:
-        args: Tuple of (file_path, num_perm, seed, file_format, separator)
+        args: Tuple of (file_paths, num_perm, seed, file_format, separator, temp_dir)
 
     Returns:
-        List of (file_path, column_name, hashvalues_bytes, cardinality) tuples
+        Path to the temporary pickle file containing results.
+        Each result is (file_path, column_name, hashvalues_bytes, cardinality).
     """
-    file_path, num_perm, seed, file_format, separator = args
+    file_paths, num_perm, seed, file_format, separator, temp_dir = args
     results = []
 
-    try:
-        # Read file based on format
-        if file_format == 'parquet':
-            df = pd.read_parquet(file_path)
-        elif file_format == 'csv':
-            df = pd.read_csv(file_path, sep=separator, on_bad_lines='skip', encoding='utf-8', low_memory=False)
-        else:
-            return results
-
-        for column_name in df.columns:
-            # Get unique non-null string values, strip whitespace vectorized
-            series = df[column_name].dropna().astype(str).str.strip()
-            values = series[series != ''].unique()
-
-            if len(values) == 0:
+    for file_path in file_paths:
+        try:
+            # Read file based on format
+            if file_format == 'parquet':
+                df = pd.read_parquet(file_path)
+            elif file_format == 'csv':
+                # Use dtype=str to skip type inference entirely, avoiding
+                # segfaults in pandas_parser.cpython on malformed files.
+                # All values are strings anyway for MinHash hashing.
+                df = pd.read_csv(file_path, sep=separator, on_bad_lines='skip',
+                                 encoding='utf-8', engine='python', dtype=str)
+            else:
                 continue
 
-            # Create MinHash signature with batch update (vectorized)
-            mh = MinHash(num_perm=num_perm, seed=seed)
-            mh.update_batch(values)
+            for column_name in df.columns:
+                # Get unique non-null string values, strip whitespace vectorized
+                series = df[column_name].dropna().astype(str).str.strip()
+                values = series[series != ''].unique()
 
-            # Store hashvalues as bytes (compact) instead of full MinHash object
-            if not mh.is_empty():
-                results.append((file_path, column_name, mh.digest().tobytes(), len(values)))
+                if len(values) == 0:
+                    continue
 
-    except Exception:
-        pass  # Skip problematic files
+                # Create MinHash signature with batch update (vectorized)
+                mh = MinHash(num_perm=num_perm, seed=seed)
+                mh.update_batch(values)
 
-    return results
+                # Store hashvalues as bytes (compact)
+                if not mh.is_empty():
+                    results.append((file_path, column_name,
+                                    mh.digest().tobytes(), len(values)))
+
+        except Exception:
+            pass  # Skip problematic files
+
+    # Write results to a temp file — avoids IPC pipe limits
+    fd, tmp_path = tempfile.mkstemp(dir=temp_dir, suffix='.pkl')
+    with os.fdopen(fd, 'wb') as f:
+        pickle.dump(results, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    return tmp_path
 
 
 def collect_files(data_dir: str, file_format: str) -> List[str]:
@@ -150,34 +166,109 @@ def build_index(data_dir: str, output_dir: str, num_perm: int = 256,
     print("\nStep 2: Generating MinHash signatures...", flush=True)
     t1 = time.time()
 
-    # Prepare arguments for parallel processing
-    args_list = [(f, num_perm, seed, file_format, separator) for f in file_list]
+    # Workers write results to temp files on disk instead of returning
+    # through IPC pipes. This completely avoids the pipe-buffer deadlock
+    # that occurs with many workers and large result sets.
+    temp_dir = os.path.join(output_dir, '_tmp_signatures')
+    os.makedirs(temp_dir, exist_ok=True)
 
-    # Collect results incrementally — workers return compact hashvalues bytes
-    # instead of full MinHash objects to minimize IPC pipe traffic.
     column_map = {}
-    hashvalues_list = []    # Store raw hashvalue arrays
+    hashvalues_list = []
     cardinalities = []
     key_id = 0
 
-    # Use smaller chunksize to avoid a single slow file blocking progress
-    chunksize = max(1, min(256, len(args_list) // (workers * 4)))
-    with Pool(processes=workers) as pool:
-        for file_results in tqdm(
-            pool.imap_unordered(process_file, args_list, chunksize=chunksize),
-            total=len(args_list),
-            desc="Processing files"
-        ):
-            for file_path, column_name, hv_bytes, cardinality in file_results:
-                key = str(key_id)
-                hashvalues_list.append(np.frombuffer(hv_bytes, dtype=np.uint64).copy())
-                cardinalities.append(cardinality)
-                column_map[key] = {
-                    'file_path': file_path,
-                    'column_name': column_name,
-                    'cardinality': cardinality
-                }
-                key_id += 1
+    # Split files into batches for workers (each worker gets ~100 files)
+    files_per_worker = max(1, min(100, len(file_list) // (workers * 2)))
+    batches = []
+    for i in range(0, len(file_list), files_per_worker):
+        batch_files = file_list[i:i + files_per_worker]
+        batches.append((batch_files, num_perm, seed, file_format, separator, temp_dir))
+
+    # Check for already-completed batches from a previous interrupted run
+    existing_tmp = set(os.listdir(temp_dir))
+    if existing_tmp:
+        print(f"  Found {len(existing_tmp)} completed batches from previous run", flush=True)
+
+    # Each batch writes a file named by its index: batch_XXXXX.pkl
+    # Re-create batches with deterministic temp file names so we can skip done ones
+    pending_batches = []
+    completed_tmp_paths = []
+    for idx, batch in enumerate(batches):
+        tmp_name = f"batch_{idx:05d}.pkl"
+        tmp_path = os.path.join(temp_dir, tmp_name)
+        if os.path.exists(tmp_path):
+            completed_tmp_paths.append(tmp_path)
+        else:
+            pending_batches.append((idx, batch, tmp_path))
+
+    print(f"  {len(completed_tmp_paths)} batches already done, {len(pending_batches)} pending", flush=True)
+
+    # Submit pending batches and collect temp file paths.
+    # If a worker segfaults, catch the error and retry failed batches sequentially.
+    tmp_paths = list(completed_tmp_paths)
+    failed_batches = []
+
+    if pending_batches:
+        with ProcessPoolExecutor(max_workers=workers) as executor:
+            futures = {executor.submit(process_file_batch, batch): (idx, tmp_expected)
+                       for idx, batch, tmp_expected in pending_batches}
+            try:
+                for future in tqdm(as_completed(futures), total=len(futures),
+                                   desc="Processing files"):
+                    try:
+                        result_path = future.result()
+                        idx, tmp_expected = futures[future]
+                        # Rename to deterministic name for resume support
+                        if result_path != tmp_expected:
+                            os.rename(result_path, tmp_expected)
+                            result_path = tmp_expected
+                        tmp_paths.append(result_path)
+                    except Exception as e:
+                        idx, tmp_expected = futures[future]
+                        print(f"\n  Batch {idx} failed: {e}. Will retry.", flush=True)
+                        failed_batches.append((idx, batches[idx], tmp_expected))
+            except Exception as e:
+                # BrokenProcessPool — collect indices of incomplete batches
+                print(f"\n  Pool broken: {e}. Retrying failed batches...", flush=True)
+                for fut, (idx, tmp_expected) in futures.items():
+                    if not fut.done() or (fut.done() and fut.exception() is not None):
+                        failed_batches.append((idx, batches[idx], tmp_expected))
+
+    # Retry failed batches sequentially (no pool, no crash propagation)
+    if failed_batches:
+        print(f"  Retrying {len(failed_batches)} failed batches sequentially...", flush=True)
+        for idx, batch, tmp_expected in tqdm(failed_batches, desc="Retrying"):
+            try:
+                result_path = process_file_batch(batch)
+                if result_path != tmp_expected:
+                    os.rename(result_path, tmp_expected)
+                    result_path = tmp_expected
+                tmp_paths.append(result_path)
+            except Exception as e:
+                print(f"  Retry failed for batch {idx}: {e}", flush=True)
+
+    # Read all temp files and build column map
+    print("  Collecting results from disk...", flush=True)
+    for tmp_path in tqdm(tmp_paths, desc="Loading results"):
+        with open(tmp_path, 'rb') as f:
+            file_results = pickle.load(f)
+        for file_path, column_name, hv_bytes, cardinality in file_results:
+            key = str(key_id)
+            hashvalues_list.append(np.frombuffer(hv_bytes, dtype=np.uint64).copy())
+            cardinalities.append(cardinality)
+            column_map[key] = {
+                'file_path': file_path,
+                'column_name': column_name,
+                'cardinality': cardinality
+            }
+            key_id += 1
+        os.unlink(tmp_path)  # Clean up temp file immediately
+
+    # Remove temp directory
+    try:
+        os.rmdir(temp_dir)
+    except OSError:
+        pass
 
     t2 = time.time()
     num_sigs = len(hashvalues_list)

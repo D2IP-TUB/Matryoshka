@@ -101,7 +101,7 @@ class DiscoveryConfig:
         },
         "ForwardSelection": {
             "model_rules": {
-                "regression": ["RegressionQR", "RegressionCholesky"],
+                "regression": ["RegressionQR", "RegressionCholesky", "IncrementalRegressionFGS"],
                 "classification": ["ClassificationCholesky", "RegressionQR"]
             },
             "required_params": {
@@ -111,7 +111,7 @@ class DiscoveryConfig:
         },
         "BackwardElimination": {
             "model_rules": {
-                "regression": ["RegressionQR", "RegressionCholesky"],
+                "regression": ["RegressionQR", "RegressionCholesky", "IncrementalRegressionFGS"],
                 "classification": ["ClassificationCholesky", "RegressionQR"]
             },
             "required_params": {

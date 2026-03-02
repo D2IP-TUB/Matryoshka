@@ -203,17 +203,24 @@ class ClassificationCholesky(FeatureSelectionModel):
 
 
     def fit_predict(self, class_covariances, class_means, return_coef: bool = False, **kwargs) -> np.ndarray:
+        class_counts = kwargs.get('class_counts', None)
         n_labels = class_means.shape[0]
         i_indices, j_indices = np.triu_indices(n_labels, k=1)
         mean_diffs = class_means[i_indices] - class_means[j_indices]
-        # divide by 2 because of pairwise distance computations
-        cov_pooled = (class_covariances[i_indices] + class_covariances[j_indices]) / 2.0
 
-        Ls = np.linalg.cholesky(cov_pooled)
-        z = np.linalg.solve(Ls, mean_diffs[..., None])
+        # Globally-pooled within-class covariance (standard LDA)
+        if class_counts is not None:
+            weights = class_counts - 1                                      # (n_k - 1)
+            cov_pooled = np.einsum('i,ijk->jk', weights, class_covariances) / weights.sum()
+        else:
+            cov_pooled = np.mean(class_covariances, axis=0)
+
+        L = np.linalg.cholesky(cov_pooled)
+        # solve  L z_j = mean_diff_j  for every pair j
+        z = np.linalg.solve(L, mean_diffs.T)                               # (d, n_pairs)
 
         # squared Mahalanobis distances (n_pairs,)
-        d = np.sum(z.squeeze(-1)**2, axis=1)
+        d = np.sum(z ** 2, axis=0)
         self.coef_ = d
 
         if return_coef:

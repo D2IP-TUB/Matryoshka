@@ -71,15 +71,43 @@ class PreProcessor:
         self.split_index = split_index
 
 
-    def run(self, augmentation_plan: list[str] = None, binning: bool = True) -> tuple[pl.DataFrame, str, str, np.ndarray]:
+    def run(self, augmentation_plan: list[str] = None, binning: bool = True, skip_num_features: bool = False) -> tuple[pl.DataFrame, str, str, np.ndarray]:
         with open(self.base_table_splits_path, 'r') as f:
             base_table_splits = json.load(f)[self.split_index]
         df = pl.read_csv(self.base_table_path, ignore_errors=True)
         features = base_table_splits['features']
+        for f in features:
+            if f in df.columns:
+                continue
+            elif f'{f}_x' in df.columns:
+                features[features.index(f)] = f'{f}_x'
+            elif f'{f}_y' in df.columns:
+                features[features.index(f)] = f'{f}_y'
+        df_columns = set(df.columns)
         if augmentation_plan is not None:
+            for i in range(len(augmentation_plan)):
+                f = augmentation_plan[i]
+                if f in df_columns:
+                    continue
+                elif f'{f}_x' in df_columns:
+                    augmentation_plan[i] = f'{f}_x'
+                elif f'{f}_y' in df_columns:
+                    augmentation_plan[i] = f'{f}_y'
             features = features + augmentation_plan
+
+        features = list(set(features))
         query_col = base_table_splits['query_col']
+        if query_col not in df.columns:
+            if f'{query_col}_x' in df.columns:
+                query_col = f'{query_col}_x'
+            elif f'{query_col}_y' in df.columns:
+                query_col = f'{query_col}_y'
         target = base_table_splits['target']
+        if target not in df.columns:
+            if f'{target}_x' in df.columns:
+                target = f'{target}_x'
+            elif f'{target}_y' in df.columns:
+                target = f'{target}_y'
         target_type = base_table_splits['target_type']
         numeric_cols = base_table_splits['numeric_features']
         categorical_cols = base_table_splits['categorical_features']
@@ -113,6 +141,8 @@ class PreProcessor:
         else:
             y = df.select(target).to_series()
 
+        if skip_num_features:
+            features = categorical_cols
         X = df.select(features)
         X = X.to_pandas().replace({None: np.nan})
         # X = imputer.fit_transform(X)
@@ -123,18 +153,33 @@ class PreProcessor:
                 random_state=42,
                 n_nearest_features=None
             )
-        numeric_pipeline = Pipeline([
-            ("imputer", imputer)
-        ])
-
-        categorical_pipeline = Pipeline([
-            ("imputer", SimpleImputer(strategy="most_frequent"))
-        ])
-
-        col_transform = ColumnTransformer([
-            ("cat", categorical_pipeline, categorical_cols),
-            ("num", numeric_pipeline, numeric_cols)
-        ]).set_output(transform="pandas")
+        if not skip_num_features:
+            numeric_pipeline = Pipeline([
+                ("imputer", imputer)
+            ])
+            categorical_pipeline = Pipeline([
+                ("imputer", SimpleImputer(strategy="most_frequent"))
+            ])
+            col_transform = ColumnTransformer([
+                ("cat", categorical_pipeline, categorical_cols),
+                ("num", numeric_pipeline, numeric_cols)
+            ]).set_output(transform="pandas")
+        else:
+            categorical_pipeline = Pipeline([
+                ("imputer", SimpleImputer(strategy="most_frequent"))
+            ])
+            col_transform = ColumnTransformer([
+                ("cat", categorical_pipeline, categorical_cols)
+            ]).set_output(transform="pandas")
+            transforms = []
+            steps = []
+            steps.append(('target', AGFeatureWrapper()))
+            categorical_transformer = Pipeline(steps=steps)
+            transforms.append(('cat', categorical_transformer, categorical_cols))
+            preprocessor = ColumnTransformer(
+                transformers=transforms,
+                remainder='drop'
+            )
         X = col_transform.fit_transform(X)
         X.columns = [col.replace('num__', '').replace('cat__', '') for col in X.columns]
         X = preprocessor.fit_transform(X, y)
@@ -173,6 +218,84 @@ class PreProcessor:
                 X.select(pl.col(X.columns[-1]))
             ], how='horizontal')
         # X = X.with_columns(pl.exclude(query_col, target).fill_nan(pl.exclude(query_col, target).filter(pl.exclude(query_col, target).is_not_nan()).mean()))
+
+        return X, query_col, target, nan_mask
+
+    
+    def run_only_query_col(self) -> tuple[pl.DataFrame, str, str, np.ndarray]:
+        with open(self.base_table_splits_path, 'r') as f:
+            base_table_splits = json.load(f)[self.split_index]
+        df = pl.read_csv(self.base_table_path, ignore_errors=True)
+
+        query_col = base_table_splits['query_col']
+        if query_col not in df.columns:
+            if f'{query_col}_x' in df.columns:
+                query_col = f'{query_col}_x'
+            elif f'{query_col}_y' in df.columns:
+                query_col = f'{query_col}_y'
+
+        target = base_table_splits['target']
+        if target not in df.columns:
+            if f'{target}_x' in df.columns:
+                target = f'{target}_x'
+            elif f'{target}_y' in df.columns:
+                target = f'{target}_y'
+        target_type = base_table_splits['target_type']
+
+        features = [query_col]
+        nan_mask = df.select([~pl.col(c).is_null().alias(c) for c in features]).to_numpy()
+
+        df = df.drop_nulls(subset=[query_col, target])
+        try:
+            df = df.drop_nans(subset=[query_col, target])
+        except InvalidOperationError:
+            pass
+
+        # Encode target
+        if target_type != 'continuous':
+            target_transforms = [
+                ('', Pipeline(steps=[('ord', OrdinalEncoder())]), [target])
+            ]
+            y = df.select(target)
+            target_preprocessor = ColumnTransformer(transformers=target_transforms)
+            y = target_preprocessor.fit_transform(y).ravel()
+            y = pl.Series(name=target, values=y)
+        else:
+            y = df.select(target).to_series()
+
+        # Encode query_col with AutoGluon
+        X_raw = df.select([query_col]).to_pandas().replace({None: np.nan})
+        categorical_pipeline = Pipeline([
+            ("imputer", SimpleImputer(strategy="most_frequent"))
+        ])
+        col_transform = ColumnTransformer([
+            ("cat", categorical_pipeline, [query_col])
+        ]).set_output(transform="pandas")
+        X_imputed = col_transform.fit_transform(X_raw)
+        X_imputed.columns = [col.replace('cat__', '') for col in X_imputed.columns]
+
+        preprocessor = ColumnTransformer(
+            transformers=[('cat', Pipeline(steps=[('target', AGFeatureWrapper())]), [query_col])],
+            remainder='drop'
+        )
+        X_encoded = preprocessor.fit_transform(X_imputed, y)
+        imputer = IterativeImputer(
+            estimator=BayesianRidge(),
+            sample_posterior=False,
+            random_state=42,
+            n_nearest_features=None
+        ).set_output(transform="pandas")
+        X_encoded = imputer.fit_transform(X_encoded)
+
+        feature_names = preprocessor.get_feature_names_out()
+        X = pl.DataFrame(X_encoded, schema=feature_names.tolist())
+        X.insert_column(X.shape[1], y)
+        X.insert_column(0, df.get_column(query_col))
+        assert X.null_count().to_numpy().sum() == 0, 'X contains null values'
+
+        X = X.with_columns(
+            pl.col(query_col).cast(pl.String).map_elements(lambda x: process_key(x)).alias(query_col)
+        )
 
         return X, query_col, target, nan_mask
 

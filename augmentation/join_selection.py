@@ -208,110 +208,6 @@ class JoinSelection(JoinDiscovery):
         return result(token_query_results, join_selection_query_results, overlap_ratio)
 
 
-    def run_loop_entry(
-        self,
-        context,
-        logical_plan,
-        user_table_agg: pl.DataFrame,
-        base_table: BaseTable,
-        query_column_name: str,
-        target_column_name: str,
-        n_jobs: int,
-        **kwargs
-    ):
-        result = context.get_result('find_joinable_tables')
-        token_query_results, join_selection_query_results, overlap_ratio = result.token_query_results, result.join_selection_query_results, result.overlap_ratio
-        table_batch_size = kwargs['table_batch_size']
-
-        total_tables = len(join_selection_query_results.group_by(['table_index', 'key_col_index']).len()) if join_selection_query_results is not None else None
-        if table_batch_size > 0:
-            total_batches = (total_tables + table_batch_size - 1) // table_batch_size
-        else:
-            total_batches = 1
-        n_init_features = len(user_table_agg.row(0)[2]) if context.config.task == 'regression' else len(user_table_agg.row(0)[3])
-        augmentation_plan = set()
-        start = time.perf_counter()
-        for batch_iter in range(1, total_batches + 1):
-            join_selection_query_batch = pl.DataFrame()
-            batches_processed = 0
-            n_iter = 0
-            for group in join_selection_query_results.group_by(['table_index', 'key_col_index']):
-                join_selection_query_batch = pl.concat(
-                    [join_selection_query_batch, group[1]],
-                    how='vertical'
-                )
-                join_selection_query_results = join_selection_query_results.filter(
-                    ~(
-                        (pl.col('table_index') == group[0][0]) &
-                        (pl.col('key_col_index') == group[0][1])
-                    )
-                )
-                batches_processed += 1
-
-                context.results['find_joinable_tables'] = namedtuple('Result', ['token_query_results', 'join_selection_query_results', 'overlap_ratio'])(
-                    None, join_selection_query_results, overlap_ratio
-                )
-                try:
-                    joint_tuples = self.run_ranking(
-                        context,
-                        user_table_agg=user_table_agg,
-                        query_column_name=query_column_name,
-                        target_column_name=target_column_name,
-                        n_jobs=n_jobs,
-                        **kwargs
-                    )
-                    kwargs.update({'joint_tuples': joint_tuples})
-                    joint_tuples = self.run_collinearity_analysis(context, **kwargs)
-                except (EmptyAugmentation, RuntimeError) as e:
-                    self.logger.info(f'No augmentation possible in this batch. Skipping to the next batch. Error: {str(e)}')
-                    continue
-                kwargs.update({'joint_tuples': joint_tuples})
-                kwargs['n_jobs'] = n_jobs
-                iter_result = self.run_strategy_with_model(context, logical_plan, base_table, **kwargs)
-
-                iter_score, iter_augmentation_plan, aug_sums = iter_result.score, iter_result.augmentation_plan, iter_result.aug_sums
-                print(f'Batch {batch_iter}/{total_batches}, Iteration Score: {iter_score}')
-                if n_iter == 0:
-                    base_score = iter_score
-                    iter_score = None
-
-                stopping_condition = self.run_loop_exit(context, iter_score, base_score, kwargs['tol'])
-                if stopping_condition:
-                    break
-                else:
-                    n_iter += 1
-                    user_table_agg = self._update_user_table_sketch(user_table_agg, query_column_name, target_column_name, n_init_features, aug_sums, context.config.task)
-                    augmentation_plan.update(iter_augmentation_plan)
-
-        augmentation_plan = list(augmentation_plan)
-        aug_feature_indices = {k: v for k, v in zip(range(len(augmentation_plan)), augmentation_plan)}
-        Result = namedtuple('JointTuple', 'aug_feature_indices')
-        self.run_loop_exit(context, None, None, kwargs['tol'], **{'output': Result(aug_feature_indices)})
-        end = time.perf_counter()
-        runtime_sec = end - start
-        self.logger.info('Selection', extra={'runtime': runtime_sec})
-
-        return Result(aug_feature_indices)
-
-
-    def run_loop_exit(self, context, current_score: float, previous_score: float | None, tol: float, **kwargs):
-        if current_score is None and previous_score is not None:
-            # first iteration, do nothing
-            return False
-        elif previous_score is None and current_score is None:
-            # skip subsequent steps before augmentation
-            physical_plan = globals()['physical_plan']
-            steps = [i for i in range(len(physical_plan) - 1)] # -1 to exclude the last augmentation step
-            for i in steps:
-                globals()['physical_plan'][i].status = StepStatus.COMPLETED
-            context.results['loop_exit'] = kwargs.get('output')
-        elif current_score is not None and previous_score is not None:
-            improvement = (current_score - previous_score) / abs(previous_score)
-            stopping_condition = improvement < tol
-
-            return stopping_condition
-
-
     def run_ranking(
         self,
         context,
@@ -446,60 +342,18 @@ class JoinSelection(JoinDiscovery):
                 user_table_agg = user_table_processed.group_by(query_column_name).agg(
                     [
                         pl.len().alias('count'),
-                        pl.concat_list(pl.col(numeric_cols).sum()).alias('sum'),
-                        # pl.concat_list(numeric_cols).alias('dot_product_upper_triangular_values')
+                        pl.concat_list(pl.col(numeric_cols).sum()).alias('sum')
                     ]
                 )
-                # user_table_agg = user_table_agg.group_by(query_column_name).agg(
-                #     pl.col('count'),
-                #     pl.col('sum'),
-                #     pl.struct(
-                #         [
-                #             pl.col('dot_product_upper_triangular_values').alias('first'),
-                #             pl.col('dot_product_upper_triangular_values').alias('second')
-                #         ]
-                #     )
-                #         .map_batches(
-                #             lambda x: pl.Series(
-                #                 (
-                #                     np.vstack(x.struct.field('first').list.explode().to_numpy()).T\
-                #                         .dot(np.vstack(x.struct.field('second').list.explode().to_numpy()))
-                #                 )
-                #             ),
-                #             return_dtype=pl.Array(pl.Float64, shape=user_table_processed.shape[1]-1)
-                #         )
-                #         .alias('dot_product_upper_triangular_values')
-                # )
                 user_table_agg = user_table_agg.sort(query_column_name, maintain_order=True)
             case 'classification':
                 numeric_cols = user_table_processed.select(pl.all().exclude(pl.String).exclude(target_column_name)).columns
                 user_table_agg = user_table_processed.group_by([query_column_name, target_column_name]).agg(
                     [
                         pl.len().alias('count'),
-                        pl.concat_list(pl.col(numeric_cols).sum()).alias('sum'),
-                        # pl.concat_list(numeric_cols).alias('dot_product_upper_triangular_values')
+                        pl.concat_list(pl.col(numeric_cols).sum()).alias('sum')
                     ]
                 )
-                # user_table_agg = user_table_agg.group_by([query_column_name, target_column_name]).agg(
-                #     pl.col('count'),
-                #     pl.col('sum'),
-                #     pl.struct(
-                #         [
-                #             pl.col('dot_product_upper_triangular_values').alias('first'),
-                #             pl.col('dot_product_upper_triangular_values').alias('second')
-                #         ]
-                #     )
-                #         .map_batches(
-                #             lambda x: pl.Series(
-                #                 (
-                #                     np.vstack(x.struct.field('first').list.explode().to_numpy()).T\
-                #                         .dot(np.vstack(x.struct.field('second').list.explode().to_numpy()))
-                #                 )
-                #             ),
-                #             return_dtype=pl.Array(pl.Float64, shape=user_table_processed.shape[1]-2)
-                #         )
-                #         .alias('dot_product_upper_triangular_values')
-                # )
                 user_table_agg = user_table_agg.sort(query_column_name, maintain_order=True)
 
         return user_table_agg

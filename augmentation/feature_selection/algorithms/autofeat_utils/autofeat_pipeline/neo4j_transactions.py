@@ -1,6 +1,9 @@
 import pandas as pd
 import polars as pl
 
+# Module-level cache for raw (unprefixed) dataframes, keyed by (lake_data_folder, node_id)
+_df_cache: dict[tuple, pd.DataFrame] = {}
+
 
 def get_pk_fk_nodes(join_paths_df: pd.DataFrame, source_path: str):
     """Return pairs of nodes (n, m) connected by a relationship with weight == 1."""
@@ -71,6 +74,11 @@ def get_node_by_id(join_paths_df: pd.DataFrame, node_id: str):
         "relationships": len(matches),  # optional metadata
     }
 
+def clear_df_cache():
+    """Clear the module-level dataframe cache."""
+    _df_cache.clear()
+
+
 def get_df_with_prefix(
     join_paths_df: pd.DataFrame,
     lake_data_folder: str,
@@ -81,6 +89,7 @@ def get_df_with_prefix(
 ) -> tuple:
     """
     Get the node from the database, read the file identified by node_id and prefix the column names with the node label.
+    Raw (unprefixed) dataframes are cached by default to avoid re-reading large CSVs.
 
     :param node_id: ID of the node - used to retrieve the corresponding node from the database
     :param target_column: Optional parameter. The name of the label/target column containing the classes,
@@ -93,28 +102,25 @@ def get_df_with_prefix(
         raise ValueError(f"Node with id {node_id} not found in join paths dataframe.")
     
     node_label = node.get("id")
-    if use_polars:
-        dataframe = pl.read_csv(f'{lake_data_folder}/{node_id}', encoding="utf8", quote_char='"', separator=table_sep, ignore_errors=True)
-        if target_column:
-            dataframe = dataframe.select(
-                pl.all().map_alias(
-                    lambda col_name: f"{node_label}.{col_name}" if col_name != target_column else col_name
-                )
-            )
-        else:
-            dataframe = dataframe.select(pl.all().map_alias(lambda col_name: f"{node_label}.{col_name}"))
 
-        dataframe = dataframe.to_pandas()
-        if target_column:
-            dataframe = dataframe.set_index([target_column]).reset_index()
+    # Check cache for raw dataframe
+    cache_key = (lake_data_folder, node_id)
+    if cache_key in _df_cache:
+        raw_df = _df_cache[cache_key].copy()
     else:
-        dataframe = pd.read_csv(
-            f'{lake_data_folder}/{node_id}', header=0, engine="python", encoding="utf8", sep=table_sep
-            # quotechar='"', escapechar='\\'
-        )
-        if target_column:
-            dataframe = dataframe.set_index([target_column]).add_prefix(f"{node_label}.").reset_index()
+        if use_polars:
+            raw_df = pl.read_csv(f'{lake_data_folder}/{node_id}', encoding="utf8", quote_char='"', separator=table_sep, ignore_errors=True).to_pandas()
         else:
-            dataframe = dataframe.add_prefix(f"{node_label}.")
+            raw_df = pd.read_csv(
+                f'{lake_data_folder}/{node_id}', header=0, engine="python", encoding="utf8", sep=table_sep,
+                on_bad_lines='skip'
+            )
+        _df_cache[cache_key] = raw_df.copy()
+
+    # Apply prefixing
+    if target_column:
+        dataframe = raw_df.set_index([target_column]).add_prefix(f"{node_label}.").reset_index()
+    else:
+        dataframe = raw_df.add_prefix(f"{node_label}.")
 
     return dataframe, node_label

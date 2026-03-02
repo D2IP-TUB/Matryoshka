@@ -63,12 +63,12 @@ class Result:
             self.total_time += self.feature_selection_time
 
 hyper_parameters = [
+    # {"LR": {'penalty': 'L1'}},
     {"RF": {}},
-    {"GBM": {}},
-    {"XT": {}},
-    {"XGB": {}},
+    # {"GBM": {}},
+    # {"XT": {}},
+    # {"XGB": {}},
     # {'KNN': {}},
-    # {'LR': {'penalty': 'L1'}},
 ]
 
 
@@ -109,7 +109,12 @@ def run_auto_gluon(dataframe: pd.DataFrame, target_column: str, problem_type: st
     start = time.time()
 
     logging.debug(f"Train algorithms: {list(algorithms_to_run.keys())} with AutoGluon ...")
-
+    # Replace all inf/-inf with NaN across entire dataframe, then drop rows with NaN target
+    dataframe = dataframe.replace([np.inf, -np.inf], np.nan)
+    dataframe = dataframe.dropna(subset=[target_column])
+    # Final safety: force-coerce target to numeric and drop any remaining non-finite
+    dataframe[target_column] = pd.to_numeric(dataframe[target_column], errors='coerce')
+    dataframe = dataframe.dropna(subset=[target_column])
     X_train, X_test, y_train, y_test = train_test_split(
         dataframe.drop(columns=[target_column]),
         dataframe[[target_column]],
@@ -117,8 +122,10 @@ def run_auto_gluon(dataframe: pd.DataFrame, target_column: str, problem_type: st
         random_state=10,
     )
     join_path_features = list(X_train.columns)
-    X_train[target_column] = y_train
-    X_test[target_column] = y_test
+    X_train = X_train.copy()
+    X_test = X_test.copy()
+    X_train[target_column] = y_train.values
+    X_test[target_column] = y_test.values
 
     # Use deterministic path based on data hash
     data_hash = hashlib.md5(pd.util.hash_pandas_object(X_train, index=True).values).hexdigest()[:8]
@@ -164,7 +171,6 @@ def evaluate_all_algorithms(dataframe: pd.DataFrame, target_column: str, algorit
     random.seed(42)
     np.random.seed(42)
     
-    hyperparams = get_hyperparameters(algorithm)
     all_results = []
     
     try:
@@ -177,18 +183,20 @@ def evaluate_all_algorithms(dataframe: pd.DataFrame, target_column: str, algorit
             enable_text_special_features=False, enable_text_ngram_features=False
         ).fit_transform(X=dataframe)
 
-    logging.debug(f"Training AutoGluon ... ")
-    for model in hyperparams:
-        runtime, results = run_auto_gluon(
-            dataframe=df,
-            target_column=target_column,
-            algorithms_to_run=model,
-            problem_type=problem_type,
-        )
+    # Drop rows with non-finite target values (NaN from left joins)
+    df = df.dropna(subset=[target_column])
 
-        for res in results:
-            res.train_time = runtime
-            res.total_time += res.train_time
-        all_results.extend(results)
+    logging.debug(f"Training AutoGluon ... ")
+    runtime, results = run_auto_gluon(
+        dataframe=df,
+        target_column=target_column,
+        algorithms_to_run={"LR": {}},
+        problem_type=problem_type,
+    )
+
+    for res in results:
+        res.train_time = runtime
+        res.total_time += res.train_time
+    all_results.extend(results)
 
     return all_results, df

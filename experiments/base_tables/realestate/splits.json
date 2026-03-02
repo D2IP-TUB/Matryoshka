@@ -1,10 +1,10 @@
 [
     {
-        "features": ["City", "Address", "Number_Beds", "Number_Baths", "Province", "Population", " Median_Family_Income "],
-        "target": "Price",
+        "features": ["LONG_NAME", "TYPE", "BEDS", "BATH", "PROPERTYSQFT", "LATITUDE", "LONGITUDE"],
+        "target": "PRICE",
         "target_type": "continuous",
-        "categorical_features": ["City", "Address", "Province"],
-        "numeric_features": ["Number_Beds", "Number_Baths", "Population", " Median_Family_Income "],
-        "query_col": "City"
+        "categorical_features": ["LONG_NAME", "TYPE"],
+        "numeric_features": ["BEDS", "BATH", "PROPERTYSQFT", "LATITUDE", "LONGITUDE"],
+        "query_col": "LONG_NAME"
     }
 ]

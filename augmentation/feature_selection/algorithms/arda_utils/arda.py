@@ -1,5 +1,6 @@
 import csv, sys
 csv.field_size_limit(sys.maxsize)
+import gc
 import logging
 import time
 import math
@@ -9,6 +10,8 @@ import numpy as np
 import pandas as pd
 import tqdm as tqdm
 from autogluon.features.generators import AutoMLPipelineFeatureGenerator
+from sklearnex import patch_sklearn
+patch_sklearn()
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import train_test_split
 
@@ -31,14 +34,14 @@ def gen_features(A: pd.DataFrame, eta: float):
     :param eta: The amount of features to generate
     :return: A matrix of generated random features, where each column represents one feature
     """
-
+    np.random.seed(42)  # Set random seed for reproducibility
     L = []
     d = A.shape[1]
     m = np.mean(A, axis=1)
     s = np.cov(A)
     logging.debug(f"\t\tARDA: Generate: {math.ceil(eta * d)} features")
-    for i in tqdm.tqdm(range(math.ceil(eta * d))):
-        L.append(np.random.multivariate_normal(m, s))
+    k = math.ceil(eta * d)
+    L = np.random.multivariate_normal(m, s, size=k)
     result = np.array(L).T
     logging.debug(f"\t\tARDA: Generated {result.shape}")
     return result
@@ -93,9 +96,9 @@ def select_features(
     """
 
     if regression:
-        estimator = RandomForestRegressor()
+        estimator = RandomForestRegressor(random_state=42)
     else:
-        estimator = RandomForestClassifier()
+        estimator = RandomForestClassifier(random_state=42)
 
     d = normalised_matrix.shape[1]
     logging.debug("\tARDA: Generate features")
@@ -144,16 +147,16 @@ def wrapper_algo(
         )
 
     if regression:
-        estimator = RandomForestRegressor()
+        estimator = RandomForestRegressor(random_state=42)
     else:
-        estimator = RandomForestClassifier()
+        estimator = RandomForestClassifier(random_state=42)
 
     last_accuracy = 0
     last_indices = []
 
     for t in sorted(T):
         X_train, X_test, y_train, y_test = train_test_split(
-            normalised_matrix, y, test_size=0.2
+            normalised_matrix, y, test_size=0.2, random_state=42
         )
         logging.debug("\nARDA: Select features")
         indices = select_features(
@@ -191,6 +194,7 @@ def select_arda_features_budget_join(
     random_state = 42
     final_selected_features = []
     all_columns = []
+    right_table_cache = {}  # Cache right tables to avoid re-reading in reconstruction
     join_paths_df = pd.read_csv(join_paths_df_path)
     join_paths_df['from_id'] = base_node_id
 
@@ -256,12 +260,9 @@ def select_arda_features_budget_join(
                 header=0,
                 engine="python",
                 encoding="utf8",
-                # quotechar='"',
-                # escapechar="\\",
+                on_bad_lines='skip',
                 sep=sep_lake
             )
-            to_column_index = int(to_column.replace('col_', ''))
-            to_column = right_table.columns[to_column_index]
             try:
                 right_table = right_table.groupby(to_column).sample(
                     n=1, random_state=random_state
@@ -269,6 +270,8 @@ def select_arda_features_budget_join(
             except ValueError:
                 continue
             right_table[to_column] = right_table[to_column].apply(process_key)
+            # Cache the deduplicated right table for reuse in reconstruction
+            right_table_cache[node_id] = right_table
 
             # Prepend node label to every column for easy identification
             right_node = get_node_by_id(join_paths_df, node_id)
@@ -359,7 +362,10 @@ def select_arda_features_budget_join(
     fetch_time = 42.0 + (end - start)
     start = time.perf_counter()
     final_selected_features_dict = {}
+    del left_table  # Free the sampled left_table with all accumulated joins
     left_table = query_table.to_pandas()
+    del query_table  # Free the Polars copy now that we have the Pandas one
+    gc.collect()
     augplan = []
     if len(final_selected_features) > 0:
         for v in final_selected_features:
@@ -373,35 +379,46 @@ def select_arda_features_budget_join(
             if '.csv' not in table_name:
                 table_name += '.csv'
             query_column_name = join_paths_df[join_paths_df["to_id"] == table_name]['from_column'].values[0]
-            join_key_iloc = join_paths_df[
+            join_key = join_paths_df[
                 (join_paths_df["from_column"] == query_column_name) &
                 (join_paths_df["to_id"] == table_name)
             ]['to_column'].values[0]
-            join_key_idx = int(join_key_iloc.replace('col_', ''))
-            right_table = pd.read_csv(
-                f'{data_lake_folder}/{table_name}',
-                header=0,
-                engine="python",
-                encoding="utf8",
-                sep=sep_lake
-            )
-            join_key = right_table.columns[join_key_idx]
-            right_table = right_table.groupby(join_key).sample(
-                n=1, random_state=random_state
-            )
+            # Reuse cached right table if available, otherwise read from disk
+            if table_name in right_table_cache:
+                right_table = right_table_cache[table_name]
+            else:
+                right_table = pd.read_csv(
+                    f'{data_lake_folder}/{table_name}',
+                    header=0,
+                    engine="c",
+                    encoding="utf8",
+                    on_bad_lines='skip',
+                    sep=sep_lake
+                )
+                right_table = right_table.groupby(join_key).sample(
+                    n=1, random_state=random_state
+                )
+                right_table[join_key] = right_table[join_key].apply(process_key)
             left_table[query_column_name] = left_table[query_column_name].apply(process_key)
-            right_table[join_key] = right_table[join_key].apply(process_key)
+            features = [f.replace('_x', '').replace('_y', '') for f in features]
             right_table = right_table[[join_key, *features]]
+            right_table = right_table.rename({join_key: query_column_name}, axis=1)
             left_table = pd.merge(
                 left_table,
                 right_table,
                 how="left",
-                left_on=query_column_name,
-                right_on=join_key
+                on=query_column_name
             )
             augplan.extend(features)
+    del right_table_cache  # Free cached right tables
+    gc.collect()
     end = time.perf_counter()
     augmentation_time = end - start
+    left_table_columns = left_table.columns.tolist()
+    left_table_columns_non_unique = [col for col in left_table_columns if left_table_columns.count(col) > 1]
+    left_table_columns_non_unique_renamed = [col + '_right' if col in left_table_columns_non_unique else col for col in left_table_columns]
+    left_table.columns = left_table_columns_non_unique_renamed
+    left_table.reset_index(drop=True, inplace=True)
     left_table = pl.from_pandas(left_table)
 
     return left_table, fetch_time, augmentation_time, augplan

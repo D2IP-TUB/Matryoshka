@@ -687,7 +687,7 @@ Examples:
         base_table_path = f'experiments/base_tables/{data_dir}/{data_dir}.csv'
         base_table_splits_path = f'experiments/base_tables/{data_dir}/splits.json'
         preprocessor = PreProcessor(base_table_path, base_table_splits_path, 0)
-        X, query_col, target, nan_mask = preprocessor.run()
+        X, query_col, target, nan_mask = preprocessor.run(binning=False, skip_num_features=True)
         X.write_csv(f'experiments/base_tables/{data_dir}/{data_dir}_preprocessed.csv')
         X = X.drop(query_col).to_pandas()
         with open(base_table_splits_path, 'r') as f:

@@ -9,6 +9,7 @@ import polars as pl
 from augmentation.retrieval import AurumJoinDiscovery
 from .autofeat_utils.autofeat_pipeline.autofeat import AutoFeat as AutoFeatBase
 from .autofeat_utils.autofeat_pipeline.evaluate_join_paths import evaluate_paths
+from .autofeat_utils.autofeat_pipeline.neo4j_transactions import clear_df_cache
 from ...utils.common import process_key
 
 # Set PYTHONHASHSEED for deterministic hashing
@@ -52,15 +53,16 @@ class AutofeatAugmenter:
             # subprocess.run(['cp', base_table_path, f'{data_lake_path}/{base_node_id}'])
             (
                 pl.read_csv(base_table_path, separator=base_table_sep)
-                    .select([*features, target_column_name])
-                    .write_csv(f'{data_lake_path}/{base_node_id}')
+                .write_csv(f'{data_lake_path}/{base_node_id}')
             )
             lake = data_lake_path.split('/')[-2]
-            aurum_index_file = f'augmentation/Aurum/graphs/{lake}.pkl'
+            _project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+            aurum_index_file = os.path.join(_project_root, 'augmentation', 'Aurum', 'graphs', f'{lake}.pkl')
             aurum = AurumJoinDiscovery(aurum_index_file, separator=lake_table_sep)
             base_path = join_paths_df_path.split('/')[:-1]
             join_paths = aurum.find_joinable_tables(
                 query_table_path=f'{"/".join(base_path)}/{base_node_id}',
+                query_col=query_column_name,
                 output_path=join_paths_df_path,
                 features=features
             )
@@ -98,7 +100,7 @@ class AutofeatAugmenter:
 
             start = time.perf_counter()
             final_selected_features_dict = {}
-            left_table = pd.read_csv(f'{data_lake_path}/{base_node_id}', sep=base_table_sep)
+            left_table = pd.read_csv(base_table_path, sep=base_table_sep)
             augplan = []
             if len(final_selected_features) > 0:
                 for v in final_selected_features:
@@ -124,41 +126,41 @@ class AutofeatAugmenter:
                     right_table = pd.read_csv(
                         f'{data_lake_path}/{table_name}',
                         header=0,
-                        engine="python",
+                        engine="c",
                         encoding="utf8",
+                        on_bad_lines='skip',
                         sep=lake_table_sep
                     )
+                    # Drop duplicate column names (keep first occurrence)
+                    right_table = right_table.loc[:, ~right_table.columns.duplicated()]
                     
-                    # Resolve placeholder column name (col_4) to actual column name
-                    actual_join_key = join_key
-                    if join_key.startswith('col_'):
-                        try:
-                            col_index = int(join_key.split('_')[1])
-                            if col_index < len(right_table.columns):
-                                actual_join_key = right_table.columns[col_index]
-                        except (ValueError, IndexError):
-                            pass
-                    
-                    right_table = right_table.groupby(actual_join_key).sample(
+                    right_table = right_table.groupby(join_key).sample(
                         n=1, random_state=42
                     )
-                    right_table[actual_join_key] = right_table[actual_join_key].apply(process_key)
-                    right_table = right_table[[actual_join_key, *features]]
+                    right_table[join_key] = right_table[join_key].apply(process_key)
+                    # Exclude join key from features to avoid duplicate columns
+                    features = [f for f in features if f != join_key]
+                    right_table = right_table[[join_key, *features]]
                     left_table = pd.merge(
                         left_table,
                         right_table,
                         how="left",
                         left_on=query_column_name,
-                        right_on=actual_join_key
+                        right_on=join_key,
+                        suffixes=('', '_right')
                     )
+                    # Drop duplicate columns introduced by the merge
+                    left_table = left_table.loc[:, ~left_table.columns.duplicated()]
                     augplan.extend(features)
             left_table_columns = left_table.columns.tolist()
             left_table_columns_non_unique = [col for col in left_table_columns if left_table_columns.count(col) > 1]
             left_table_columns_non_unique_renamed = [col + '_right' if col in left_table_columns_non_unique else col for col in left_table_columns]
             left_table.columns = left_table_columns_non_unique_renamed
+            left_table.reset_index(drop=True, inplace=True)
             left_table = pl.from_pandas(left_table)
             end = time.perf_counter()
             augmentation_time = end - start
             subprocess.run(['rm', f'{data_lake_path}/{base_node_id}'])
+            clear_df_cache()
 
         return left_table, fetch_time, augmentation_time, augplan

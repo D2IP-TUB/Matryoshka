@@ -10,13 +10,11 @@ lakes=(
     "nyc"
     "cuk" 
     "gittables"
-    # "lakebench"
 )
 
 # Tables
 tables=(
     "arrest"
-    "elections"
     "hospital"
     "jobs"
     "realestate"
@@ -24,18 +22,18 @@ tables=(
     "imdb"
     "pageviews"
     "vgsales"
+    "airbnb"
     "fire"
     "energy"
-    # "inspections"
     "trees"
 )
 
 # Algorithms
 algorithms=(
-    # "forward"
-    # "backward"
-    # "lasso"
-    # "qcr"
+    "forward"
+    "backward"
+    "lasso"
+    "qcr"
     "arda"
     "kitana"
     "autofeat"

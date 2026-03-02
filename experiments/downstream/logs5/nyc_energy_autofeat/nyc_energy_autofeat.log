@@ -1,0 +1,2 @@
+{"timestamp": "2026-03-01 15:11:52,534", "level": "INFO", "message": "Join Selection started", "strategy": null, "model": null, "total_features": null, "fitted_features": null, "joinability": null, "score": null, "runtime": null, "augmentation_plan": null, "config": "fabd3b5e9079e76b5ddddc2399d23a97"}
+{"timestamp": "2026-03-01 15:12:04,252", "level": "INFO", "message": "Augmentation", "strategy": null, "model": null, "total_features": null, "fitted_features": null, "joinability": null, "score": null, "runtime": 1.606834476813674, "augmentation_plan": [], "config": null}

@@ -8,7 +8,7 @@ def save_results():
     NOTEBOOK_DIR = Path(os.path.abspath('')).resolve()
     PROJECT_ROOT = NOTEBOOK_DIR.parents[1]  # Fast_Data_Discovery
 
-    exp_path = NOTEBOOK_DIR / 'logs'
+    exp_path = NOTEBOOK_DIR / 'logs5'
     base_scores = pl.read_csv(PROJECT_ROOT / 'experiments' / 'base_tables' / 'base_simple_scores.csv').rename({'': 'table'})
     aug_scores = pl.read_csv(exp_path / 'simple_results.csv').rename({'_duplicated_0': 'experiment'})
     aug_scores = aug_scores.with_columns(pl.col('experiment').fill_null(pl.col('')))

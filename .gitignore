@@ -192,3 +192,10 @@ offline/logs
 # Files too large for GitHub LFS (>2GB)
 augmentation/Aurum/graphs/gittables_embeddings.pkl
 augmentation/Aurum/graphs/gittables_index.bin
+
+# Oversized files (split into .lfs chunks)
+augmentation/Aurum/graphs/gittables/lsh_ensemble.pkl
+experiments/downstream/logs/nyc_fire_backward/augmented_nyc_fire_backward.csv
+experiments/downstream/logs3/nyc_fire_backward/augmented_nyc_fire_backward.csv
+experiments/downstream/logs4/nyc_fire_backward/augmented_nyc_fire_backward.csv
+experiments/downstream/logs5/nyc_fire_backward/augmented_nyc_fire_backward.csv

@@ -6,7 +6,8 @@ from typing import Tuple, List
 import numpy as np
 import pandas as pd
 import tqdm
-
+from sklearnex import patch_sklearn
+patch_sklearn()
 from .autofeat import AutoFeat
 from .join_path_utils import get_path_length
 from .evaluation_algorithms import evaluate_all_algorithms

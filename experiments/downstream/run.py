@@ -1,3 +1,4 @@
+import gc
 import numpy as np
 import inspect
 import json
@@ -7,8 +8,9 @@ import subprocess
 import pandas as pd
 import polars as pl
 from sklearn.experimental import enable_iterative_imputer
-from sklearn.impute import IterativeImputer
+from sklearn.impute import IterativeImputer, SimpleImputer
 from sklearn.ensemble import HistGradientBoostingRegressor
+from sklearn.preprocessing import OrdinalEncoder
 import yaml
 
 from experiments.downstream.ablation.top_k.res import save_results
@@ -94,6 +96,7 @@ if __name__ == "__main__":
                 if strategy == 'arda':
                     discovery_config_kwargs['params']['query_table'] = X
                     discovery_config_kwargs['params']['features'] = features
+                    discovery_config_kwargs['params']['query_table_path'] = base_table_path.replace('.csv', '_preprocessed.csv')
                 elif strategy == 'kitana':
                     discovery_config_kwargs['params']['query_table_path'] = base_table_path
                     discovery_config_kwargs['params']['features'] = features
@@ -103,13 +106,14 @@ if __name__ == "__main__":
                     discovery_config_kwargs['params']['base_table_sep'] = ','
                     discovery_config_kwargs['params']['problem_type'] = splits[0]['target_type']
                     discovery_config_kwargs['params']['features'] = features
+                    discovery_config_kwargs['params']['base_table_path'] = base_table_path.replace('.csv', '_preprocessed.csv')
             else:
                 execution_data.discovery_config_args.pop('data_lake_path')
                 execution_data.discovery_config_args.pop('lake_table_sep')
                 discovery_config_kwargs = execution_data.discovery_config_args
             config = DiscoveryConfig(**discovery_config_kwargs)
 
-            find_best_joins_kwargs = {'user_table_processed': X, 'top_k': 20, 'n_jobs': 64, 'config': config}
+            find_best_joins_kwargs = {'user_table_processed': X, 'top_k': 20, 'n_jobs': 16, 'config': config}
             with open('experiments/downstream/config.yml', 'r') as f:
                 config = yaml.safe_load(f)
             base_tables = config['lakes'][lake]['base_tables']
@@ -118,13 +122,10 @@ if __name__ == "__main__":
                     if key == base_table_name:
                         task = base_table[key][0]['task']
             
-            if strategy != 'LassoFeatureSelector':
-                if task == 'regression':
-                    find_best_joins_kwargs['corr_threshold'] = 0.55
-                elif task == 'classification':
-                    find_best_joins_kwargs['corr_threshold'] = 0.01
-            else:
-                find_best_joins_kwargs['corr_threshold'] = None
+            if task == 'regression':
+                find_best_joins_kwargs['corr_threshold'] = 0.1
+            elif task == 'classification':
+                find_best_joins_kwargs['corr_threshold'] = 0.3
             find_best_joins_kwargs.update(execution_data.run_args)
 
             errors_log_file = os.path.join(script_dir, 'errors.log')
@@ -154,6 +155,10 @@ if __name__ == "__main__":
                     pickle.dump(augplan, f)
                 with open(errors_log_file, 'a') as f:
                     f.write(f'Error for combination {combination_hash}: {str(e)}\n')
+            finally:
+                # Free memory between experiments to prevent OOM
+                worker = df_aug = augplan = config = X = find_best_joins_kwargs = None
+                gc.collect()
     
     experiment_dir = os.listdir('experiments/downstream/logs/')
     trainers = {
@@ -191,16 +196,31 @@ if __name__ == "__main__":
                 problem_type = 'regression'
             target = splits[0]['target']
             query_col = splits[0]['query_col']
-            preprocessed_flag = any(['cat__' in col for col in X.columns])
+            numeric_dtypes = (pl.Float32, pl.Float64, pl.Int8, pl.Int16, pl.Int32, pl.Int64, pl.UInt8, pl.UInt16, pl.UInt32, pl.UInt64)
+            X = pl.from_pandas(X)
+            preprocessed_flag = all([X[col].dtype in numeric_dtypes for col in X.columns if col not in [query_col, target]])
+            numeric_cols = []
+            categorical_cols = []
             if not preprocessed_flag:
-                preprocessor = PreProcessor(
-                    base_table_path=os.path.join(os.path.join(log_path, f'augmented_{dir}.csv')),
-                    base_table_splits_path=os.path.join('experiments/base_tables/', table_name, 'splits.json'),
-                    split_index=0
-                )
-                X, query_col, target, nan_mask = preprocessor.run(augmentation_plan=augplan, binning=False)
+                try:
+                    X.select(pl.col(target))
+                except Exception as e:
+                    target = target+'_x'
+                if augplan is not None:
+                    for col in augplan:
+                        if col in X.columns:
+                            dtype = X[col].dtype
+                            if dtype in numeric_dtypes:
+                                if col not in numeric_cols and col != target:
+                                    numeric_cols.append(col)
+                            else:
+                                if col not in categorical_cols and col != query_col:
+                                    categorical_cols.append(col)
                 X = X.to_pandas()
-            else:
+                X = X.replace([np.inf, -np.inf], np.nan)
+                simple_imputer = SimpleImputer(strategy='most_frequent').set_output(transform="pandas")
+                if len(categorical_cols) > 0:
+                    X[categorical_cols] = simple_imputer.fit_transform(X[categorical_cols])
                 imputer = IterativeImputer(
                     estimator=HistGradientBoostingRegressor(
                         max_iter=100,
@@ -214,8 +234,30 @@ if __name__ == "__main__":
                     max_iter=5,
                     tol=1e-2
                 ).set_output(transform="pandas")
-                query_col_series = X[query_col]
-                X = X.drop(columns=query_col)
+                if len(numeric_cols) > 0:
+                    X[numeric_cols] = imputer.fit_transform(X[numeric_cols])
+
+                feat_gen = AutoMLPipelineFeatureGenerator(
+                    enable_text_ngram_features=False,
+                    enable_text_special_features=False
+                )
+                X = feat_gen.fit_transform(X)
+            else:
+                X = X.to_pandas()
+                imputer = IterativeImputer(
+                    estimator=HistGradientBoostingRegressor(
+                        max_iter=100,
+                        max_depth=3,
+                        learning_rate=0.1,
+                        random_state=42
+                    ),
+                    sample_posterior=False,
+                    random_state=42,
+                    n_nearest_features=10,
+                    max_iter=5,
+                    tol=1e-2
+                ).set_output(transform="pandas")
+                X = X.drop(columns=query_col, errors='ignore')
                 X = X.replace([np.inf, -np.inf], np.nan)
                 try:
                     X = imputer.fit_transform(X)
@@ -223,14 +265,9 @@ if __name__ == "__main__":
                     print(f"Error during imputation for {dir}: {e}")
                     X.to_csv('tmp.csv')
                     raise e
-                X[query_col] = query_col_series
-            X = X.drop(columns=query_col)
-            try:
-                X = X.drop(columns='Unnamed: 0')
-            except KeyError:
-                pass
-
-            X = X.dropna(subset=[target])
+            X = X.drop(columns=query_col, errors='ignore')
+            X = X.drop(columns='Unnamed: 0', errors='ignore')
+            X = X.dropna()
             model_dir = f'{log_path}/{trainer_name}_model'
             trainer = trainer_class(
                 problem_type=problem_type,

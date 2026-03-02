@@ -1,4 +1,5 @@
 import csv
+import os
 import time
 import torch
 import warnings
@@ -32,11 +33,13 @@ class KitanaAugmenter:
             warnings.simplefilter("ignore")
             start = time.perf_counter()
             lake = data_lake_path.split('/')[-2]
-            aurum_index_file = f'augmentation/Aurum/graphs/{lake}.pkl'
+            _project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+            aurum_index_file = os.path.join(_project_root, 'augmentation', 'Aurum', 'graphs', f'{lake}.pkl')
             aurum = AurumJoinDiscovery(aurum_index_file, separator=lake_table_sep)
             base_path = join_paths_df_path.split('/')[:-1]
             join_paths = aurum.find_joinable_tables(
                 query_table_path=f'{"/".join(base_path)}/{base_node_id}',
+                query_col=query_column_name,
                 output_path=join_paths_df_path,
                 features=features
             )
@@ -61,15 +64,6 @@ class KitanaAugmenter:
             lake_tables = sorted(join_paths_df['to_id'].unique().tolist())
             seller_data_paths = [f"{data_lake_path}/{table}" for table in lake_tables]
 
-            new_to_columns = []
-            for row in join_paths_df.itertuples():
-                to_id = row.to_id
-                to_column = row.to_column
-                seller_features = self._read_csv_header(f"{data_lake_path}/{to_id}", join_keys, lake_table_sep)
-                col_idx = int(to_column.replace('col_', ''))
-                col_name = seller_features[col_idx]
-                new_to_columns.append(col_name)
-            join_paths_df['to_column'] = new_to_columns
             items = join_paths_df[['from_column', 'to_column']].drop_duplicates()
             schema_mapping = dict(zip(items['to_column'], items['from_column']))
             for seller_path in seller_data_paths:

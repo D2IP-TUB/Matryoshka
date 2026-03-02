@@ -360,6 +360,7 @@ class ForwardSelection(GreedyAlgo, RemoteMixin):
                             [dic_per_class[label]['features_mean'] for label in dic_per_class],
                             axis=0
                         ),
+                        'class_counts': np.array([dic_per_class[label]['joint_count'] for label in dic_per_class]),
                         'sketch_proc_per_class': sketch_proc_per_class
                     }
                     task_calls.append((
@@ -432,6 +433,7 @@ class BackwardElimination(GreedyAlgo, RemoteMixin):
                 aug_feature_indices = {k: v for k, v in zip(new_features_idx, aug_feature_indices.values())}
 
                 model_instance = model(joint_tuples.joint_count, 0)
+                class_counts = np.array([class_dict[label]['joint_count'] for label in class_dict])
                 params = {
                     'class_covariances': np.transpose(
                         np.stack(
@@ -441,6 +443,7 @@ class BackwardElimination(GreedyAlgo, RemoteMixin):
                         (2, 0, 1)
                     ),
                     'class_means': class_means,
+                    'class_counts': class_counts,
                     'all_features_idx': all_features_idx
                 }
                 base_score = self._first_iteration(model_instance, self.metric, **params)
@@ -492,7 +495,8 @@ class BackwardElimination(GreedyAlgo, RemoteMixin):
                             ),
                             (2, 0, 1)
                         ),
-                        'class_means': kwargs['class_means'][:, indices]
+                        'class_means': kwargs['class_means'][:, indices],
+                        'class_counts': kwargs['class_counts']
                     }
             task_calls.append((
                 '_evaluate_feature',

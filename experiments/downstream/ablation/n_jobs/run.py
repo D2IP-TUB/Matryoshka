@@ -3,15 +3,12 @@ import json
 import os
 import pickle
 import subprocess
-import pandas as pd
 import polars as pl
 import yaml
 
 os.environ['PYTHONPATH'] = '.'
 from augmentation.join_selection import JoinSelection
 from augmentation.utils.config import DiscoveryConfig
-from autogluon.features.generators import AutoMLPipelineFeatureGenerator
-from experiments.base_tables.base_scoring import AutoGluonTrainer, SimpleTrainer
 from experiments.base_tables.base_table_preprocessing import PreProcessor
 from experiments.downstream.experiment_executor import ExperimentExecutor
 
@@ -31,7 +28,6 @@ if __name__ == "__main__":
     config_df = config_df.filter(
         (pl.col('strategy')=='ForwardSelection')
     )
-    print(config_df)
     script_dir = os.path.dirname(os.path.abspath(__file__))
     base_tables_dir = 'experiments/base_tables/'
     n_jobs_choices = [1, 2, 4, 16, 32, 64]
@@ -110,7 +106,7 @@ if __name__ == "__main__":
                     discovery_config_kwargs = execution_data.discovery_config_args
                 config = DiscoveryConfig(**discovery_config_kwargs)
 
-                find_best_joins_kwargs = {'user_table_processed': X, 'top_k': 50, 'n_jobs': n_jobs, 'config': config}
+                find_best_joins_kwargs = {'user_table_processed': X, 'top_k': 20, 'n_jobs': n_jobs, 'config': config}
                 with open('experiments/downstream/config.yml', 'r') as f:
                     config = yaml.safe_load(f)
                 base_tables = config['lakes'][lake]['base_tables']
@@ -121,9 +117,9 @@ if __name__ == "__main__":
                 
                 if strategy != 'LassoFeatureSelector':
                     if task == 'regression':
-                        find_best_joins_kwargs['corr_threshold'] = 0.01
+                        find_best_joins_kwargs['corr_threshold'] = 0.1
                     elif task == 'classification':
-                        find_best_joins_kwargs['corr_threshold'] = 0.01
+                        find_best_joins_kwargs['corr_threshold'] = 0.3
                 else:
                     find_best_joins_kwargs['corr_threshold'] = None
                 find_best_joins_kwargs.update(execution_data.run_args)

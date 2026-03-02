@@ -6,7 +6,11 @@ from kneefinder import KneeFinder
 from typing import Any, Literal
 
 from tabulate import tabulate
-from .sketch_processing import SketchProcessor
+from .sketch_processing import (
+    SketchProcessor,
+    _create_aug_table_sketch_task,
+    _create_aug_table_sketch_clf_task,
+)
 
 
 class OverlapRanking:
@@ -58,7 +62,11 @@ class OverlapRanking:
         if 'regression' in task:
             aug_table_sketches = ray.get(
                 [
-                    sketch_proc._create_aug_table_sketch.remote(group, user_table_agg, query_column_name, self.corr_threshold, self.var_threshold)
+                    _create_aug_table_sketch_task.remote(
+                        group, user_table_agg, query_column_name,
+                        self.conninfo, self.feature_selection_table_name,
+                        self.var_threshold, self.corr_threshold
+                    )
                     for group in join_selection_query_results.group_by(['table_index', 'feature_index', 'table_column_index'])
                 ]
             )
@@ -83,7 +91,11 @@ class OverlapRanking:
 
             aug_table_sketches = ray.get(
                 [
-                    sketch_proc._create_aug_table_sketch_clf.remote(group, user_table_agg, query_column_name, target_column_name)
+                    _create_aug_table_sketch_clf_task.remote(
+                        group, user_table_agg, query_column_name, target_column_name,
+                        self.conninfo, self.feature_selection_table_name,
+                        self.var_threshold, self.corr_threshold
+                    )
                     for group in join_selection_query_results.group_by(['table_index', 'feature_index', 'table_column_index'])
                 ]
             )
@@ -113,7 +125,11 @@ class OverlapRanking:
         if 'regression' in task:
             aug_table_sketches = ray.get(
                 [
-                    sketch_proc._create_aug_table_sketch.remote(group, user_table_agg, query_column_name, self.corr_threshold, self.var_threshold)
+                    _create_aug_table_sketch_task.remote(
+                        group, user_table_agg, query_column_name,
+                        self.conninfo, self.feature_selection_table_name,
+                        self.var_threshold, self.corr_threshold
+                    )
                     for group in join_selection_query_results.group_by(['table_index', 'feature_index', 'table_column_index'])
                 ]
             )
@@ -143,7 +159,11 @@ class OverlapRanking:
 
             aug_table_sketches = ray.get(
                 [
-                    sketch_proc._create_aug_table_sketch_clf.remote(group, user_table_agg, query_column_name, target_column_name)
+                    _create_aug_table_sketch_clf_task.remote(
+                        group, user_table_agg, query_column_name, target_column_name,
+                        self.conninfo, self.feature_selection_table_name,
+                        self.var_threshold, self.corr_threshold
+                    )
                     for group in join_selection_query_results.group_by(['table_index', 'feature_index', 'table_column_index'])
                 ]
             )
@@ -159,12 +179,12 @@ class OverlapRanking:
             joint_aug_table_sketches_per_class = dict(sorted(joint_aug_table_sketches_per_class.items(), key=lambda item: item[0]))
 
             table_feature_index = joint_aug_table_sketches_per_class[0].table_feature_index
-            joint_tuples = [
-                ray.get(sketch_proc._join_aug_table.remote(table_feature_index, base_table, aug_table, task, label))
+            joint_tuples = ray.get([
+                sketch_proc._join_aug_table.remote(table_feature_index, base_table, aug_table, task, label)
                 for label, base_table, aug_table in zip(
                     base_table_sketches_per_class.keys(), base_table_sketches_per_class.values(), joint_aug_table_sketches_per_class.values()
                 )
-            ]
+            ])
             joint_tuples = {k: v for d in joint_tuples for k, v in d.items()}
 
             Result = namedtuple('JointTuple', ['class_dict', 'new_features_count', 'aug_feature_indices', 'aug_table_sketches_per_class'])
@@ -198,7 +218,11 @@ class OverlapRanking:
         )
         aug_table_sketches = ray.get(
             [
-                sketch_proc._create_aug_table_sketch.remote(group, user_table_agg, query_column_name, self.corr_threshold, self.var_threshold)
+                _create_aug_table_sketch_task.remote(
+                    group, user_table_agg, query_column_name,
+                    self.conninfo, self.feature_selection_table_name,
+                    self.var_threshold, self.corr_threshold
+                )
                 for group in join_selection_query_results.group_by(['table_index', 'feature_index', 'table_column_index'])
             ]
         )
@@ -287,7 +311,11 @@ class OverlapRanking:
 
         aug_table_sketches = ray.get(
             [
-                sketch_proc._create_aug_table_sketch_clf.remote(group, user_table_agg, query_column_name, target_column_name, var_threshold=self.var_threshold, corr_threshold=self.corr_threshold)
+                _create_aug_table_sketch_clf_task.remote(
+                    group, user_table_agg, query_column_name, target_column_name,
+                    self.conninfo, self.feature_selection_table_name,
+                    self.var_threshold, self.corr_threshold
+                )
                 for group in join_selection_query_results.group_by(['table_index', 'feature_index', 'table_column_index'])
             ]
         )
@@ -303,12 +331,12 @@ class OverlapRanking:
         joint_aug_table_sketches_per_class = dict(sorted(joint_aug_table_sketches_per_class.items(), key=lambda item: item[0]))
 
         table_feature_index = joint_aug_table_sketches_per_class[0].table_feature_index
-        joint_tuples = [
-            ray.get(sketch_proc._join_aug_table.remote(table_feature_index, base_table, aug_table, task, label))
+        joint_tuples = ray.get([
+            sketch_proc._join_aug_table.remote(table_feature_index, base_table, aug_table, task, label)
             for label, base_table, aug_table in zip(
                 base_table_sketches_per_class.keys(), base_table_sketches_per_class.values(), joint_aug_table_sketches_per_class.values()
             )
-        ]
+        ])
         joint_tuples = {k: v for d in joint_tuples for k, v in d.items()}
         # eta_dict = self._correlation_ratio(joint_tuples)
 

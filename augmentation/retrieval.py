@@ -878,7 +878,7 @@ class AurumJoinDiscovery:
         if 'separator' in self.metadata:
             self.separator = self.metadata['separator']
 
-    def find_joinable_tables(self, query_table_path: str, features: list[str],
+    def find_joinable_tables(self, query_table_path: str, query_col: str, features: list[str],
                              query_separator: str = ',', output_path: str = None) -> pl.DataFrame:
         """
         Find joinable tables using LSH Ensemble containment search.
@@ -910,7 +910,7 @@ class AurumJoinDiscovery:
         query_col = splits_info[0]['query_col']
 
         # Read query table
-        query_table = pl.read_csv(query_table_path, separator=query_separator)
+        query_table = pl.read_csv(query_table_path, separator=query_separator, columns=[query_col])
 
         join_records = []
 
