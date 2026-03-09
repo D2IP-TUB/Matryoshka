@@ -1,7 +1,0 @@
-Traceback (most recent call last):
-  File "/app/main.py", line 112, in <module>
-    main()
-  File "/app/main.py", line 48, in main
-    data_dirs = [os.path.join(data_dir, d) for d in os.listdir(data_dir)]
-                                                    ^^^^^^^^^^^^^^^^^^^^
-FileNotFoundError: [Errno 2] No such file or directory: '/app/data/canada_us_uk_open_data'
