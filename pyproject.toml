@@ -1,0 +1,94 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "matryoshka"
+version = "0.1.0"
+description = "Discovery and selection of relevant features from data lakes for machine learning"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Fedor Turchenko" }]
+keywords = ["data discovery", "data lakes", "feature selection", "data augmentation", "AutoML"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Database",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Runtime requirements of the core package. Version floors follow the
+# environment the paper's experiments were run in; upper bounds are set only
+# where an API break is known.
+dependencies = [
+    "adbc-driver-postgresql>=1.0",
+    "arrow-json>=0.9",
+    "connectorx>=0.4",
+    "networkx>=3.0",
+    "numba>=0.60",
+    "numpy>=2.0",
+    "pgpq>=0.9",
+    "polars>=1.20",
+    "polars-hash>=0.5",
+    "psutil>=5.9",
+    "psycopg[binary,pool]>=3.2",
+    "psycopg2-binary>=2.9",
+    "pyarrow>=17",
+    "PyYAML>=6.0",
+    "ray>=2.40",
+    "scikit-learn>=1.5",
+    "scipy>=1.14",
+    "tabulate>=0.9",
+]
+
+[project.optional-dependencies]
+# L1 proxy models (`LinRegL1`, `LogRegL1`, `Lasso`) and their hyper-parameter
+# search. Not needed for the greedy forward selection of the paper.
+l1 = ["skglm>=0.4", "scikit-optimize>=0.10"]
+# Batched incremental selection (`IncrementalSelection`), which locates the
+# knee of the score curve.
+stepwise = ["kneed>=0.8"]
+# Access to the database over an SSH tunnel.
+ssh = ["sshtunnel>=0.4", "paramiko>=3.0"]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[project.scripts]
+matryoshka = "matryoshka.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/D2IP-TUB/Matryoshka"
+Paper = "https://www.vldb.org/pvldb/vol19/"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "postgres: test requires a reachable PostgreSQL instance (deselect with '-m \"not postgres\"')",
+]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = [
+    "E501",  # line length; the numeric kernels read better unwrapped
+    "E741",  # `l` as a name, used in the linear-algebra code
+    "E402",  # several modules set warning filters before importing polars
+]
+
+[tool.ruff.lint.per-file-ignores]
+# The selection algorithms re-export the proxy models by star import; the
+# registry resolves them by name, but the star imports are still load-bearing
+# for the `models` namespace inside the algorithm modules.
+"src/matryoshka/selection/algorithms/*.py" = ["F403", "F405"]
+"src/matryoshka/selection/collinearity.py" = ["F403", "F405"]
+"src/matryoshka/join_selection.py" = ["F403", "F405"]
+# The migrated tests are also runnable as scripts and use compact assertions.
+"tests/*.py" = ["E702"]

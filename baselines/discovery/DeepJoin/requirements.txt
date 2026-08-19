@@ -1,0 +1,7 @@
+sentence-transformers>=3.0.0
+hnswlib>=0.8.0
+torch>=2.0
+pandas
+numpy
+tqdm
+pyarrow
