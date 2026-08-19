@@ -40,7 +40,7 @@ ARCHIVE_MD5 = 'e92a3158bbf4bbda0307ff0b5a891222'
 ARCHIVE_BYTES = 212_741_120
 MEMBER_PREFIX = 'autofeat/covertype/'
 
-# The 13 lake tables, plus the benchmark's own manifest.
+# The 13 lake tables. The benchmark's own manifests go to _metadata/, see prepare().
 EXPECTED_TABLES = [
     'table_0_0.csv',
     'table_1_1.csv', 'table_1_2.csv', 'table_1_3.csv',
@@ -133,10 +133,27 @@ def prepare(archive: Path, out_dir: Path) -> None:
         print(f'  {name:16s} {table.height:>7,} rows, '
               f'{table.width} columns, keys {key_columns}')
 
+    # The benchmark's own manifests describe the intended join graph. They go
+    # into a subdirectory rather than alongside the tables: the indexer treats
+    # every .csv in the lake directory as a lake table, and connections.csv
+    # would otherwise be indexed as a fourteenth one.
+    metadata_dir = out_dir / '_metadata'
+    metadata_dir.mkdir(exist_ok=True)
     for extra in ('tables.json', 'connections.csv'):
         if (source / extra).is_file():
-            shutil.copy2(source / extra, out_dir / extra)
+            shutil.copy2(source / extra, metadata_dir / extra)
     shutil.rmtree(staging)
+
+    stray = sorted(
+        p.name for p in out_dir.iterdir()
+        if p.is_file() and p.suffix in {'.csv', '.tsv', '.parquet'}
+        and p.name not in EXPECTED_TABLES
+    )
+    if stray:
+        raise SystemExit(
+            f'{out_dir} holds files the indexer would treat as lake tables but '
+            f'which are not part of the benchmark: {stray}. Remove them first.'
+        )
 
 
 def is_complete(out_dir: Path) -> bool:

@@ -82,13 +82,13 @@ Fisher proxy (`metric='conditional_mahalanobis'`, `tol=0.05`).
 | Tables indexed | 13 |
 | Index rows | 6,794,266 |
 | Index size | 6.8 GiB |
-| Build time, 4 workers | 2 min 45 s |
+| Build time, 4 workers | 2 min 40 s |
 
 The index is large relative to the 110 MB lake because every table has 423,680
 distinct keys, and the index stores one Gram matrix sketch per key per table.
 Index size scales with key cardinality, not with the byte size of the lake.
 
-**Online.** 8 features selected in 322 s from 12 candidate tables.
+**Online.** 8 features selected in 323 s from the 12 candidate tables.
 
 ```
 table_1_2.csv.horizontaldistancetohydrology_min
@@ -106,8 +106,8 @@ table_1_3.csv.soiltype31_median
 | | features | accuracy | weighted F1 |
 |---|---|---|---|
 | base | 4 | 0.5048 | 0.4589 |
-| augmented | 12 | 0.5930 | 0.5930 |
-| **delta** | **+8** | **+0.0882** | **+0.1341 (+29.2 %)** |
+| augmented | 12 | 0.5940 | 0.5940 |
+| **delta** | **+8** | **+0.0892** | **+0.1351 (+29.4 %)** |
 
 For reference, the `--sample 50000` run selects 7 features in 55 s and moves
 weighted F1 from 0.3545 to 0.5493.
@@ -139,10 +139,13 @@ either, because all key columns in this benchmark share one value space.
 
 ## Reproducibility
 
-The numbers above come from one seeded run (`--seed 42`). The index is a
-deterministic function of the lake, and selection is deterministic given the
-index, so the selected feature set is stable across runs. Absolute runtimes and
-the random forest scores vary with hardware and with scikit-learn's version.
+The numbers above come from a seeded run (`--seed 42`) on a freshly cloned
+repository and a freshly built index. The index is a deterministic function of
+the lake, and selection is deterministic given the index, so the eight selected
+features are identical across repeated runs. The downstream scores are not
+quite: the random forest is fitted with `n_jobs=-1`, and repeated runs of the
+full table were observed to move weighted F1 between 0.5930 and 0.5940. Absolute
+runtimes depend on hardware.
 
 ## Trying other settings
 

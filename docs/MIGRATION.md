@@ -173,3 +173,8 @@ a declared dependency.
 - `polars.from_arrow` on an ADBC stream emits a `FutureWarning` under polars
   1.43; the call site is inside `adbc_driver_manager`, reached through
   `cursor.fetch_arrow`.
+- `DirectoryLoader` indexes every `.csv`, `.tsv` and `.parquet` file in the lake
+  directory. That is the right default for a lake, but it means a manifest or
+  README placed alongside the tables becomes a lake table. The covertype example
+  keeps the benchmark's manifests in a `_metadata/` subdirectory for this reason
+  and refuses to proceed if an unexpected table-shaped file is present.
