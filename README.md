@@ -1,26 +1,73 @@
-# Matryoshka
+# Matryoshka: Feature Selection and Data Discovery in Data Lakes
 
-Matryoshka discovers and selects relevant features from a data lake to augment a
-query table for a downstream machine learning task. It replaces join
-materialisation with compact Gram matrix sketches and selects features by
-incrementally fitting linear proxy models over those sketches, so the cost of
-evaluating a candidate feature set does not grow with the number of rows in the
-joined relations.
+**Matryoshka is a data discovery and feature selection system for data lakes.**
+Point it at a lake of CSV or Parquet tables and a query table with a join key and
+a prediction target, and it finds the joinable tables, selects the columns that
+actually improve the downstream model, and returns the augmented table — without
+ever materialising the joins.
 
-This repository holds the reference implementation of
+[![Paper: PVLDB 2026](https://img.shields.io/badge/paper-PVLDB%20Vol.%2019%20%282026%29-b31b1b)](https://d2ip-tub.github.io/Matryoshka/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776ab)](#installation)
+[![PostgreSQL 14+](https://img.shields.io/badge/postgres-14%2B-336791)](#installation)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green)](#license)
+
+Matryoshka replaces join materialisation with compact Gram matrix sketches and
+selects features by incrementally fitting linear proxy models over those
+sketches, so the cost of evaluating a candidate feature set does not grow with
+the number of rows in the joined relations. This is the reference implementation
+of
 
 > F. Turchenko, R. Zhang, B. Chen, M. Boehm, B. Salimi, A. Shaikhha and
-> Z. Abedjan. **Matryoshka: Uncovering Relevant Features in Data Lakes to
-> Enhance Machine Learning Applications.** PVLDB, Vol. 19, 2026.
+> Z. Abedjan. [**Matryoshka: Uncovering Relevant Features in Data Lakes to
+> Enhance Machine Learning
+> Applications.**](https://d2ip-tub.github.io/Matryoshka/)
+> PVLDB, Vol. 19, 2026.
 
 Reported over eleven query tables and three data lakes, Matryoshka improves
 downstream prediction quality by 19.3 % on average while achieving the lowest
 geometric mean runtime and up to 120x faster execution on join-intensive
 workloads.
 
+**Contents** — [What Matryoshka does](#what-matryoshka-does) ·
+[How it works](#how-matryoshka-feature-selection-works) ·
+[Installation](#installation) · [Quick start](#quick-start) ·
+[Configuration](#configuration) · [Repository layout](#repository-layout) ·
+[Example](#example-end-to-end-feature-discovery-on-covertype) ·
+[Comparison to other systems](#how-matryoshka-compares-to-arda-autofeat-kitana-cocoa-and-metam) ·
+[Reproducing the paper](#reproducing-the-paper) · [FAQ](#faq) ·
+[Citation](#citation)
+
 ---
 
-## How it works
+## What Matryoshka does
+
+Feature augmentation over a data lake is two problems stacked on top of each
+other. **Data discovery** asks which lake tables can be joined to the query table
+at all. **Feature selection** asks which of the thousands of columns those tables
+expose are worth keeping. Solving them separately is what makes the task
+expensive: discovery hands over hundreds of joinable tables, and evaluating each
+candidate column means materialising a join over millions of rows.
+
+Matryoshka solves both over one index and one data structure:
+
+- **Joinable table discovery in data lakes** — an inverted index from cell value
+  to `(table, column, row)` ranks lake tables by join-key coverage, including
+  multi-hop join paths.
+- **Feature selection without joins** — candidate columns are scored from Gram
+  matrix sketches, so a candidate feature set is evaluated in time independent of
+  the number of rows in the joined relations.
+- **Cardinality-preserving augmentation** — pre-aggregation means the query table
+  gains columns, never rows, so the augmented table drops straight into an
+  existing training pipeline.
+- **Downstream-model agnostic** — the linear proxy only ranks candidates; the
+  compact, redundancy-free feature sets it selects transfer to gradient-boosted
+  trees, neural networks and AutoML systems.
+
+Typical uses: automated feature engineering for tabular machine learning, data
+augmentation for AutoML, enterprise data lake exploration, and table discovery
+and join-path search over open-data corpora.
+
+## How Matryoshka feature selection works
 
 Matryoshka runs in two phases.
 
@@ -177,35 +224,41 @@ src/matryoshka/          the installable library
 examples/covertype/      a complete, runnable example
 baselines/               competing systems, for reproducing the evaluation
 tests/                   unit tests that need no database
-docs/                    design notes and the migration record
+docs/                    the PVLDB paper and its GitHub Pages landing page
 ```
 
-## Example
+## Example: end-to-end feature discovery on covertype
 
-`examples/covertype/` runs the whole pipeline on the AutoFeat `covertype`
-benchmark — a 13-table lake of 423,680 rows each — and reports the downstream
-effect of the augmentation. See its README for numbers and instructions.
+[`examples/covertype/`](examples/covertype/) runs the whole pipeline on the
+AutoFeat `covertype` benchmark — a 13-table lake of 423,680 rows each — and
+reports the downstream effect of the augmentation. It is the one example that
+runs end to end on a laptop in minutes. See
+[its README](examples/covertype/README.md) for numbers and instructions.
 
-## Baselines
+## How Matryoshka compares to ARDA, AutoFeat, Kitana, COCOA and Metam
 
-`baselines/` holds the augmenters and discovery indexes Matryoshka is compared
-against: ARDA, AutoFeat, CAAFE, Kitana, QCR, COCOA, Metam, and the Aurum, JOSIE,
-LSH and DeepJoin indexes. They sit outside the installed package because they
-pull in Neo4j, PyTorch, AutoGluon and an OpenAI client, none of which Matryoshka
-itself needs. They are reached lazily by name:
+[`baselines/`](baselines/) holds the augmenters and discovery indexes Matryoshka
+is compared against in the paper: **ARDA**, **AutoFeat**, **CAAFE**, **Kitana**,
+**QCR**, **COCOA**, **Metam**, and the **Aurum**, **JOSIE**, **LSH** and
+**DeepJoin** indexes. They sit outside the installed package because they pull in
+Neo4j, PyTorch, AutoGluon and an OpenAI client, none of which Matryoshka itself
+needs. They are reached lazily by name:
 
 ```python
 mk.available_baselines()          # names
 mk.resolve_baseline('ArdaAugmenter')   # imports on demand
 ```
 
-See `baselines/README.md` for provenance and dependencies.
+See [`baselines/README.md`](baselines/README.md) for provenance and
+dependencies, and the paper for the head-to-head accuracy and runtime results.
 
 ## Reproducing the paper
 
-The full evaluation harness, the lakes, and the pre-built indexes are not part
-of this repository; several of the indexes are in the terabyte range. See
-`docs/REPRODUCIBILITY.md` for what is required and what is available.
+The full evaluation harness, the lakes, and the pre-built indexes are not part of
+this repository; several of the indexes are in the terabyte range. The
+[covertype example](examples/covertype/) reproduces the smallest configuration
+end to end, and the [paper](https://d2ip-tub.github.io/Matryoshka/)
+documents the experimental setup for the rest.
 
 ## Development
 
@@ -215,7 +268,47 @@ pytest                   # unit tests, no database required
 ruff check src tests
 ```
 
+## FAQ
+
+**Does Matryoshka do data discovery, feature selection, or both?**
+Both, over a single index. Discovery ranks lake tables by join-key coverage;
+selection then scores individual columns from the sketches of those tables. They
+are not separate systems bolted together — the same PostgreSQL relation answers
+both queries.
+
+**Do I have to materialise the joins?**
+No. That is the point of the design. Candidate feature sets are scored from Gram
+matrix sketches, and only the finally selected features `F*` are materialised
+into `Q ⊕ F*`.
+
+**Does it support classification and regression?**
+Both. Classification uses a linear discriminant analysis proxy, regression an
+ordinary least squares proxy. Set `task='classification'` or `task='regression'`.
+
+**Will features selected by a linear proxy help a non-linear model?**
+Yes, in general — the proxy only has to *rank* candidates, not fit the target, so
+the compact feature sets it returns transfer to gradient-boosted trees and neural
+networks. The exception is purely non-linear signal: low-order polynomial
+sketches cover the univariate case, but higher-order interactions do not reduce
+to the second-order statistics the sketches store.
+
+**How large a data lake can it index?**
+Sketch size depends on the number of columns, not the number of rows, so online
+selection cost is independent of the size of the joined relations. Offline
+indexing is a single parallel scan per table; the paper reports results on three
+lakes.
+
+**Does it need a GPU or a deep learning stack?**
+No. Matryoshka needs Python and PostgreSQL. PyTorch and the LLM client in
+`baselines/` are there only for the systems it is compared against.
+
+**Does it follow multi-hop join paths?**
+Yes — pass `params={'n_hops': 2}` to consider join graphs beyond the query
+table's direct neighbours.
+
 ## Citation
+
+If you use Matryoshka in academic work, please cite the PVLDB paper:
 
 ```bibtex
 @article{matryoshka2026,
@@ -229,3 +322,15 @@ ruff check src tests
   year    = {2026}
 }
 ```
+
+## License
+
+Apache-2.0.
+
+---
+
+<sub>**Topics:** data discovery · feature selection · data lakes · feature
+discovery · data augmentation · automated feature engineering · joinable table
+discovery · join path search · table discovery · factorised machine learning ·
+Gram matrix sketches · AutoML · tabular machine learning · PostgreSQL · PVLDB
+2026</sub>

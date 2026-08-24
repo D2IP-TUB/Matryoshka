@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Matryoshka: Uncovering Relevant Features in Data Lakes to Enhance Machine Learning Applications</title>
+<meta name="description" content="Matryoshka discovers and selects relevant features from data lakes for downstream machine learning, replacing join materialization with compact Gram matrix sketches. PVLDB Vol. 19, 2026.">
+
+<!-- Google Scholar / Highwire Press indexing -->
+<meta name="citation_title" content="Matryoshka: Uncovering Relevant Features in Data Lakes to Enhance Machine Learning Applications">
+<meta name="citation_author" content="Turchenko, Fedor">
+<meta name="citation_author" content="Zhang, Runjie">
+<meta name="citation_author" content="Chen, Binger">
+<meta name="citation_author" content="Boehm, Matthias">
+<meta name="citation_author" content="Salimi, Babak">
+<meta name="citation_author" content="Shaikhha, Amir">
+<meta name="citation_author" content="Abedjan, Ziawasch">
+<meta name="citation_publication_date" content="2026">
+<meta name="citation_journal_title" content="Proceedings of the VLDB Endowment">
+<meta name="citation_journal_abbrev" content="PVLDB">
+<meta name="citation_volume" content="19">
+<meta name="citation_issue" content="11">
+<meta name="citation_firstpage" content="3704">
+<meta name="citation_lastpage" content="3717">
+<meta name="citation_doi" content="10.14778/3836663.3836719">
+<meta name="citation_pdf_url" content="https://d2ip-tub.github.io/Matryoshka/Matryoshka__Uncovering_Relevant_Features_in_Data_Lakes_to_Enhance_Machine_Learning_Applications.pdf">
+
+<!-- Link previews when the URL is shared -->
+<meta property="og:type" content="article">
+<meta property="og:title" content="Matryoshka: Uncovering Relevant Features in Data Lakes">
+<meta property="og:description" content="Feature discovery and selection over data lakes without materializing joins. PVLDB Vol. 19, 2026.">
+<meta property="og:url" content="https://d2ip-tub.github.io/Matryoshka/">
+<meta name="twitter:card" content="summary">
+
+<style>
+:root{
+  --bg:#ffffff; --fg:#14171a; --muted:#5b6570; --line:#e3e7eb;
+  --accent:#b31b1b; --accent-fg:#ffffff; --card:#f7f8fa;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#0f1216; --fg:#e8eaed; --muted:#9aa4af; --line:#262c33;
+         --accent:#e05252; --accent-fg:#0f1216; --card:#171b20; }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  padding:max(1.25rem,env(safe-area-inset-top)) 1.25rem 3rem;
+}
+.wrap{max-width:52rem;margin:0 auto}
+.venue{
+  display:inline-block;font-size:.75rem;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);
+  border-radius:3px;padding:.2rem .5rem;margin-bottom:1rem;
+}
+h1{font-size:1.55rem;line-height:1.3;margin:0 0 .85rem;font-weight:700;letter-spacing:-.01em}
+@media (min-width:40rem){h1{font-size:2rem}}
+.authors{margin:0 0 .35rem;font-size:1rem}
+.affil{margin:0 0 1.5rem;color:var(--muted);font-size:.9rem}
+.actions{display:flex;flex-wrap:wrap;gap:.6rem;margin:0 0 2rem}
+.btn{
+  display:inline-block;padding:.75rem 1.15rem;border-radius:7px;
+  text-decoration:none;font-weight:600;font-size:.95rem;border:1px solid var(--line);
+  color:var(--fg);background:var(--card);
+}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn:active{opacity:.75}
+h2{font-size:1.05rem;margin:2rem 0 .6rem;letter-spacing:.01em}
+.abstract{margin:0;color:var(--fg)}
+.viewer{
+  margin:1.5rem 0;border:1px solid var(--line);border-radius:8px;overflow:hidden;
+  height:min(80vh,900px);background:var(--card);
+}
+.viewer object{display:block;width:100%;height:100%;border:0}
+/* Phones and other touch devices get the buttons, not a useless 14-page embed. */
+@media (max-width:56rem),(pointer:coarse){ .viewer{display:none} }
+.note{
+  margin:1.25rem 0 0;padding:.85rem 1rem;background:var(--card);
+  border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:0 6px 6px 0;font-size:.9rem;color:var(--muted);
+}
+pre{
+  background:var(--card);border:1px solid var(--line);border-radius:7px;
+  padding:1rem;overflow-x:auto;font-size:.8rem;line-height:1.5;margin:0;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+#copy{margin-top:.6rem;font-size:.85rem;padding:.5rem .9rem;cursor:pointer}
+footer{margin-top:2.5rem;padding-top:1.25rem;border-top:1px solid var(--line);
+  font-size:.85rem;color:var(--muted)}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <main>
+    <span class="venue">PVLDB Vol. 19, 2026</span>
+
+    <h1>Matryoshka: Uncovering Relevant Features in Data Lakes to Enhance Machine Learning Applications</h1>
+
+    <p class="authors">Fedor Turchenko, Runjie Zhang, Binger Chen, Matthias Boehm,
+       Babak Salimi, Amir Shaikhha, Ziawasch Abedjan</p>
+    <p class="affil">BIFOLD &amp; TU Berlin · UC San Diego · University of Edinburgh</p>
+
+    <div class="actions">
+      <a class="btn primary" href="Matryoshka__Uncovering_Relevant_Features_in_Data_Lakes_to_Enhance_Machine_Learning_Applications.pdf">Read the PDF</a>
+      <a class="btn" href="Matryoshka__Uncovering_Relevant_Features_in_Data_Lakes_to_Enhance_Machine_Learning_Applications.pdf" download>Download</a>
+      <a class="btn" href="https://github.com/D2IP-TUB/Matryoshka">Code on GitHub</a>
+    </div>
+
+    <h2>Abstract</h2>
+    <p class="abstract">Data coverage and completeness are crucial prerequisites for machine
+    learning (ML) applications. Data discovery allows retrieving relevant features from
+    unstructured data lakes to augment the training data. However, existing methods either
+    target only individual ML tasks, decouple table retrieval from feature selection, or
+    neglect inter-feature relationships, resulting in redundant, high-dimensional data. In
+    this paper, we introduce Matryoshka, a holistic system that discovers and selects
+    relevant features from data lakes for downstream ML applications. Matryoshka replaces
+    costly join materialization with compact Gram matrix sketches and performs feature
+    selection via incrementally fitted linear proxy models with correlation-based pruning,
+    yielding redundancy-free feature sets for regression and classification. Matryoshka
+    improves downstream prediction quality by 19.3% on average while achieving the lowest
+    geometric mean runtime and up to 120x faster execution on join-intensive workloads.</p>
+
+    <div class="viewer">
+      <object data="Matryoshka__Uncovering_Relevant_Features_in_Data_Lakes_to_Enhance_Machine_Learning_Applications.pdf" type="application/pdf">
+        <p style="padding:1rem">Your browser cannot display the PDF inline.
+        <a href="Matryoshka__Uncovering_Relevant_Features_in_Data_Lakes_to_Enhance_Machine_Learning_Applications.pdf">Open it directly.</a></p>
+      </object>
+    </div>
+
+    <p class="note">14 pages, 771 KB. The paper is typeset in two columns, so on a small
+    screen it reads best in landscape or in your phone's PDF viewer after downloading.</p>
+
+    <h2>Citation</h2>
+<pre><code>@article{matryoshka2026,
+  title   = {Matryoshka: Uncovering Relevant Features in Data Lakes
+             to Enhance Machine Learning Applications},
+  author  = {Turchenko, Fedor and Zhang, Runjie and Chen, Binger and
+             Boehm, Matthias and Salimi, Babak and Shaikhha, Amir and
+             Abedjan, Ziawasch},
+  journal = {Proceedings of the VLDB Endowment},
+  volume  = {19},
+  number  = {11},
+  pages   = {3704--3717},
+  year    = {2026},
+  doi     = {10.14778/3836663.3836719}
+}</code></pre>
+    <button class="btn" id="copy" type="button" hidden>Copy BibTeX</button>
+  </main>
+
+  <footer>
+    <p>PVLDB, 19(11): 3704–3717, 2026 · doi:10.14778/3836663.3836719<br>
+    Licensed under <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND 4.0</a>.
+    Author preprint, hosted here until the VLDB Endowment version is online.</p>
+  </footer>
+</div>
+
+<script>
+// Progressive enhancement only: the page is fully usable without this.
+var btn = document.getElementById('copy');
+if (navigator.clipboard && btn) {
+  btn.hidden = false;
+  btn.addEventListener('click', function () {
+    navigator.clipboard.writeText(document.querySelector('pre code').innerText).then(function () {
+      btn.textContent = 'Copied';
+      setTimeout(function () { btn.textContent = 'Copy BibTeX'; }, 1800);
+    });
+  });
+}
+</script>
+</body>
+</html>
