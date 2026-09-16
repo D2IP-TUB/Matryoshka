@@ -180,6 +180,12 @@ AutoGluon-based pipeline. Passing a table in any other shape raises
 `exclude_tables=['its_name.csv']` to `Augmenter`. Otherwise it retrieves itself
 and its own target reappears as a candidate feature.
 
+**If some lake columns are known to leak the target**, pass them as a features
+stop-list, `features_stop_list={'table.csv': ['column', ...]}`. Their features
+are dropped before selection through the mask of correlation pruning (also when
+pruning is disabled), while the other columns of their tables remain candidates.
+Column names can be given as in the lake table or normalized as in the index.
+
 ## Configuration
 
 `Augmenter` covers the common case; `DiscoveryConfig` and `JoinSelection` expose
@@ -194,6 +200,7 @@ the full surface.
 | `corr_threshold` | 0.3 / 0.1 | Correlation pruning threshold; `None` disables pruning. |
 | `budget_seconds` | `None` | Wall-clock cap on discovery, for anytime operation. |
 | `exclude_tables` | `()` | Lake tables never retrieved. |
+| `features_stop_list` | `None` | Lake columns never used as features, keyed by table. |
 | `n_jobs` | 1 | Ray parallelism for candidate evaluation. |
 
 The defaults are the **conditional** criteria, which score a candidate *given*

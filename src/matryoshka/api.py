@@ -16,7 +16,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 import polars as pl
 
@@ -324,6 +324,15 @@ class Augmenter:
         Lake table names never retrieved. Set this when the query table is
         itself a member of the lake, so that it cannot retrieve itself and
         leak its own target back in as a candidate feature.
+    features_stop_list
+        Lake columns never used as features, as ``{lake table name: [column
+        names]}``. Table names are file names, with or without the extension;
+        column names can be given as in the lake table or normalized as in the
+        index. Set this when some lake columns are known to leak the target, so
+        that they are dropped before selection while the rest of their table
+        remains a candidate. The stop-listed features are removed through the
+        ``drop_feature`` mask of correlation pruning, also when pruning is
+        disabled.
     params
         Extra entries merged into ``DiscoveryConfig.params``, for example
         ``{'polynomial_features': {'enabled': True, 'degree': 2}}``.
@@ -346,6 +355,7 @@ class Augmenter:
         n_jobs: int = 1,
         budget_seconds: float | None = None,
         exclude_tables: Iterable[str] | None = None,
+        features_stop_list: Mapping[str, Iterable[str]] | None = None,
         params: dict[str, Any] | None = None,
         verbose: bool = False,
         log_dir: str | os.PathLike | None = None,
@@ -369,6 +379,10 @@ class Augmenter:
         self.n_jobs = n_jobs
         self.budget_seconds = budget_seconds
         self.exclude_tables = list(exclude_tables or ())
+        self.features_stop_list = {
+            table_name: [column_names] if isinstance(column_names, str) else list(column_names)
+            for table_name, column_names in (features_stop_list or {}).items()
+        }
         self.extra_params = dict(params or {})
         self.verbose = verbose
         self.log_dir = str(log_dir) if log_dir is not None else None
@@ -428,6 +442,7 @@ class Augmenter:
             log_file_name=f'{self.index.name}_{target}.log',
             settings=self.index.settings,
             exclude_tables=self.exclude_tables,
+            features_stop_list=self.features_stop_list,
         )
         start = time.perf_counter()
         table, plan = worker.find_best_joins(

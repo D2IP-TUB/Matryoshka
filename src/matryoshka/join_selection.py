@@ -32,10 +32,12 @@ from .utils.logging import default_log_dir, setup_logger
 
 class JoinSelection(JoinDiscovery):
     def __init__(self, feature_selection_table_name: str, overlap_table_name: str, verbose: bool = False,
-                 log_file_name: str = 'log', log_dir: str = None, settings=None, exclude_tables=None):
+                 log_file_name: str = 'log', log_dir: str = None, settings=None, exclude_tables=None,
+                 features_stop_list=None):
         log_dir = str(log_dir) if log_dir else str(default_log_dir())
         super().__init__(feature_selection_table_name, overlap_table_name, verbose=False,
-                         settings=settings, exclude_tables=exclude_tables, log_dir=log_dir)
+                         settings=settings, exclude_tables=exclude_tables, log_dir=log_dir,
+                         features_stop_list=features_stop_list)
 
         self.feature_selection_table_name = feature_selection_table_name
         self.overlap_table_name = overlap_table_name
@@ -69,6 +71,8 @@ class JoinSelection(JoinDiscovery):
                                   f'  FROM temp_valid_combinations ' \
                                   ');'
         self._last_friendly_plan: list[str] = []
+        # Whether pruning built a `drop_feature` mask, from correlation or from the features stop-list
+        self.features_masked = False
 
 
     def find_best_joins(
@@ -200,10 +204,12 @@ class JoinSelection(JoinDiscovery):
         query_column_name = query_column.columns[0]
         target_column_name = user_table_processed.columns[0]
         start = time.perf_counter()
-        if self.corr_threshold is not None:
+        self.features_masked = False
+        if self.corr_threshold is not None or self.features_stop_list:
             join_selection_query_results, status = self._prune_features(
                 join_selection_query_results, query_column_name, target_column_name, user_table_processed, context.config.task, self.corr_threshold
             )
+            self.features_masked = status
             if status == False:
                 self.corr_threshold = None
                 fitted_features = total_features
@@ -231,7 +237,12 @@ class JoinSelection(JoinDiscovery):
     ):
         result = context.get_result('find_joinable_tables')
         _, join_selection_query_results, overlap_ratio = result.token_query_results, result.join_selection_query_results, result.overlap_ratio
-        ranker = OverlapRanking(self.feature_selection_table_name, self.conninfo, self.corr_threshold, var_threshold)
+        # The ranking uses the correlation threshold only to decide whether to apply the `drop_feature` mask, so a
+        # mask built from the features stop-list alone (without correlation pruning) needs a threshold as well
+        mask_threshold = self.corr_threshold
+        if mask_threshold is None and self.features_masked:
+            mask_threshold = 0.0
+        ranker = OverlapRanking(self.feature_selection_table_name, self.conninfo, mask_threshold, var_threshold)
         params = {
             'task': context.config.task,
             'join_selection_query_results': join_selection_query_results,

@@ -1,7 +1,7 @@
 import os
 import re
 import time
-from typing import Iterable
+from typing import Iterable, Mapping
 
 import adbc_driver_postgresql.dbapi as adbc_dbapi
 import numpy as np
@@ -11,13 +11,145 @@ import polars_hash as plh
 
 from .db.handler import DBHandler
 from .exceptions import KeyNotFoundError
+from .utils.common import process_key
 from .utils.logging import default_log_dir, setup_logger
+
+
+def normalize_features_stop_list(features_stop_list: 'Mapping[str, Iterable[str]] | None') -> dict[str, set[str]]:
+    '''
+    Normalizes the column names of a features stop-list with `process_key`, as
+    the indexer does with the column names of lake tables. Names that are
+    already normalized, including those disambiguated with a `<position>v2`
+    suffix at indexing, are left unchanged. Table names are reduced to their
+    basename.
+
+    Parameters:
+    ----------
+    features_stop_list: Mapping[str, Iterable[str]] | None
+        Column names never used as features, keyed by lake table name
+
+    Returns:
+    -------
+    dict[str, set[str]]: Normalized column names, keyed by lake table name
+    '''
+    normalized = {}
+    for table_name, column_names in (features_stop_list or {}).items():
+        if isinstance(column_names, str):
+            column_names = [column_names]
+        normalized.setdefault(os.path.basename(str(table_name)), set()).update(process_key(name) for name in column_names)
+
+    return normalized
+
+
+def _features_stop_list_masks(join_selection_query_results: pl.DataFrame, features_stop_list: dict[str, set[str]]) -> pl.DataFrame:
+    '''
+    Builds the keep mask of every feature group with stop-listed features.
+
+    The positions of the sketch vectors are named by `column_headers` as
+    `<column>_<aggregate>`, and their order depends on the key column the table
+    was grouped by, so stop-listed features are located by name within every
+    (table, key column, feature group). All aggregates of a stop-listed column
+    are masked. A stop-list entry matches a lake table if it equals the
+    basename of its `table_name`, with or without the extension (entries are
+    never split at a dot, as table names can contain dots).
+
+    Parameters:
+    ----------
+    join_selection_query_results: pl.DataFrame
+        Sketches of the joinable tables, with the `table_name` and `column_headers` metadata
+
+    features_stop_list: dict[str, set[str]]
+        Output of `normalize_features_stop_list`
+
+    Returns:
+    -------
+    pl.DataFrame: `table_index`, `key_col_index`, `feature_index` and `stop_list_mask` (1 keeps a feature, 0 drops it) of the feature groups with stop-listed features
+    '''
+    keys = ['table_index', 'key_col_index', 'feature_index']
+    missing_columns = [column for column in ('table_name', 'column_headers') if column not in join_selection_query_results.columns]
+    if missing_columns:
+        raise ValueError(f'The features stop-list requires the {missing_columns} metadata of the joinable tables')
+
+    feature_groups = (
+        join_selection_query_results
+            .select(keys + ['table_name', 'column_headers', pl.col('sum').list.len().alias('n_features')])
+            .unique(subset=keys, keep='first', maintain_order=True)
+    )
+    masks = []
+    for group in feature_groups.iter_rows(named=True):
+        table_name = str(group['table_name'])
+        basename = os.path.basename(table_name)
+        names = {basename, os.path.splitext(basename)[0]}
+        stop_listed_columns = set().union(*(features_stop_list.get(name, set()) for name in names))
+        if not stop_listed_columns:
+            continue
+        column_headers = list(group['column_headers'] or [])
+        if len(column_headers) != group['n_features']:
+            raise ValueError(f'Table {table_name!r} has {len(column_headers)} column headers for {group["n_features"]} features')
+        # Normalized column names contain no underscore, so the column name is the part of the header before the first one
+        mask = [0 if str(header).partition('_')[0] in stop_listed_columns else 1 for header in column_headers]
+        if all(mask):
+            continue
+        masks.append({**{key: group[key] for key in keys}, 'stop_list_mask': mask})
+
+    schema = {**{key: join_selection_query_results.schema[key] for key in keys}, 'stop_list_mask': pl.List(pl.Int16)}
+
+    return pl.DataFrame(masks, schema=schema)
+
+
+def apply_features_stop_list(join_selection_query_results: pl.DataFrame, features_stop_list: dict[str, set[str]], has_mask: bool) -> tuple[pl.DataFrame, bool]:
+    '''
+    Augments the `drop_feature` mask built by pruning with the features of the
+    stop-list, or builds it from the stop-list alone if pruning built none, and
+    drops the feature groups left without features.
+
+    Parameters:
+    ----------
+    join_selection_query_results: pl.DataFrame
+        Sketches of the joinable tables, with the `table_name` and `column_headers` metadata
+
+    features_stop_list: dict[str, set[str]]
+        Output of `normalize_features_stop_list`
+
+    has_mask: bool
+        Whether `join_selection_query_results` carries a `drop_feature` mask built by pruning
+
+    Returns:
+    -------
+    tuple[pl.DataFrame, bool]: Sketches of the joinable tables and whether the stop-list masked any feature group
+    '''
+    if not features_stop_list:
+        return join_selection_query_results, False
+
+    masks = _features_stop_list_masks(join_selection_query_results, features_stop_list)
+    if masks.is_empty():
+        return join_selection_query_results, False
+
+    if has_mask:
+        base_mask = pl.col('drop_feature')
+    else:
+        base_mask = pl.lit(1, dtype=pl.Int16).repeat_by(pl.col('sum').list.len())
+    join_selection_query_results = (
+        join_selection_query_results
+            .join(masks, on=['table_index', 'key_col_index', 'feature_index'], how='left', maintain_order='left')
+            .with_columns(
+                pl.when(pl.col('stop_list_mask').is_null())
+                    .then(base_mask)
+                    .otherwise(base_mask * pl.col('stop_list_mask'))
+                    .cast(pl.List(pl.Int16))
+                    .alias('drop_feature')
+            )
+            .drop('stop_list_mask')
+            .filter(pl.col('drop_feature').list.sum() > 0)
+    )
+
+    return join_selection_query_results, True
 
 
 class JoinDiscovery(DBHandler):
     def __init__(self, feature_selection_table_name: str, overlap_table_name: str, verbose: bool = False,
                  log_file_name: str = None, settings=None, exclude_tables: 'Iterable[str] | None' = None,
-                 log_dir: str = None) -> None:
+                 log_dir: str = None, features_stop_list: 'Mapping[str, Iterable[str]] | None' = None) -> None:
         '''
         Parameters:
         ----------
@@ -26,9 +158,17 @@ class JoinDiscovery(DBHandler):
         
         feature_selection_table_name: str
             Name of the table containing the query index
+
+        features_stop_list: Mapping[str, Iterable[str]] | None = None
+            Columns never used as features, keyed by lake table name (the file
+            name, with or without the extension). Column names can be given as
+            in the lake table or normalized as in the index. They are dropped
+            during pruning, together with the features weakly correlated with
+            the target
         '''
         super().__init__(feature_selection_table_name, overlap_table_name, settings=settings)
         self.feature_selection_table_name = feature_selection_table_name
+        self.features_stop_list = normalize_features_stop_list(features_stop_list)
 
         timestamp = time.asctime(time.localtime()).replace(' ', '_').replace(':', '_')
         log_dir = str(log_dir) if log_dir else str(default_log_dir())
@@ -389,10 +529,18 @@ class JoinDiscovery(DBHandler):
         return join_selection_query_results
 
 
-    def _prune_features(self, join_selection_query_results: pl.DataFrame, query_col: str, target: str, user_table_processed: pl.DataFrame, task: str, corr_threshold: float = None) ->  pl.DataFrame:
-        if corr_threshold is None:
-            return join_selection_query_results
-        else:
+    def _prune_features(self, join_selection_query_results: pl.DataFrame, query_col: str, target: str, user_table_processed: pl.DataFrame, task: str, corr_threshold: float = None) -> tuple[pl.DataFrame, bool]:
+        '''
+        Builds the `drop_feature` mask of the joinable tables (1 keeps a feature,
+        0 drops it) from the features weakly correlated with the target, if
+        `corr_threshold` is set, and from the features stop-list, if given.
+
+        Returns:
+        -------
+        tuple[pl.DataFrame, bool]: Sketches of the joinable tables and whether a `drop_feature` mask was built
+        '''
+        status = False
+        if corr_threshold is not None:
             if task == 'classification':
                 join_selection_query_results, status = self._eta_query(join_selection_query_results, user_table_processed, query_col, target, epsilon=corr_threshold)
             elif task == 'regression':
@@ -405,7 +553,9 @@ class JoinDiscovery(DBHandler):
                     .drop('num_features')
             )
 
-            return join_selection_query_results, status
+        join_selection_query_results, stop_list_status = apply_features_stop_list(join_selection_query_results, self.features_stop_list, has_mask=status)
+
+        return join_selection_query_results, status or stop_list_status
 
 
     def _eta_query(self, join_selection_query_results: pl.DataFrame, user_table_processed: pl.DataFrame, query_col: str, target: str, epsilon: float):
