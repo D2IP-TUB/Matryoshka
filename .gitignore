@@ -56,3 +56,5 @@ baselines/augmenters/autofeat_og_utils/
 .idea/
 *.swp
 .DS_Store
+# For the wrappers of external repositories which compare against matryoshka
+baseline.py
