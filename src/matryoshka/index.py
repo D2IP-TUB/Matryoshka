@@ -31,6 +31,27 @@ from matryoshka.utils.common import process_key, semiring_aggregates
 from matryoshka.utils.logging import default_log_dir, setup_logger
 from matryoshka.utils.sampling import priority_sampling, reweight
 
+# Index rows are converted to Arrow and written in slices of about this many bytes: a single Arrow string or binary
+# array cannot exceed 2 GiB, and converting a whole flush at once multiplies its memory footprint.
+_WRITE_SLICE_BYTES = 256 * 1024 ** 2
+
+
+def _cast_in_slices(batch: pa.RecordBatch, target_schema: pa.Schema):
+    '''Cast a record batch to the target schema, halving it while one of its arrays exceeds Arrow's 2 GiB limit.'''
+    try:
+        cast = batch.cast(target_schema)
+    except pa.ArrowInvalid as e:
+        if 'too large' not in str(e) or batch.num_rows <= 1:
+            raise
+        cast = None
+    if cast is not None:
+        yield cast
+        return
+    # Copy the halves: a zero-copy slice keeps its offsets into the whole buffer, which still exceed the limit
+    half = batch.num_rows // 2
+    yield from _cast_in_slices(batch.take(pa.array(range(half))), target_schema)
+    yield from _cast_in_slices(batch.take(pa.array(range(half, batch.num_rows))), target_schema)
+
 # ---------------------------------------------------------------------------
 # Pluggable median representation for {num_state}.values_
 # ---------------------------------------------------------------------------
@@ -876,25 +897,24 @@ class ExhaustiveIndex(DBHandler):
             match pg_table_name:
                 case self.feature_selection_table_name:
                     encode_cols = ['sum', 'diag', 'qcr_term_positive', 'qcr_term_negative']
-                    arrow_table = df.to_arrow().combine_chunks()
-                    batch = arrow_table.to_batches()[0]
-                    del arrow_table
-                    gc.collect()
+                    rows_per_slice = max(1, df.height * _WRITE_SLICE_BYTES // max(df.estimated_size(), 1))
+                    for offset in range(0, df.height, rows_per_slice):
+                        batch = df.slice(offset, rows_per_slice).to_arrow().combine_chunks().to_batches()[0]
 
-                    all_cols = batch.schema.names
-                    for col in encode_cols:
-                        if col in all_cols:
-                            idx = all_cols.index(col)
-                            batch = batch.set_column(
-                                idx,
-                                col,
-                                array_to_utf8_json_array(batch.column(col))
-                            )
+                        all_cols = batch.schema.names
+                        for col in encode_cols:
+                            if col in all_cols:
+                                idx = all_cols.index(col)
+                                batch = batch.set_column(
+                                    idx,
+                                    col,
+                                    array_to_utf8_json_array(batch.column(col))
+                                )
+                        yield from _cast_in_slices(batch, target_schema)
                 case self.overlap_table_name:
                     df = df.unique(subset=['key']).select(['key', 'table_index', 'key_col_index', 'row_index'])
                     batch = df.to_arrow().to_batches()[0]
-
-            yield batch.cast(target_schema)
+                    yield from _cast_in_slices(batch, target_schema)
 
         else:
             # --- Low-memory disk-streaming path (large tables) ---
