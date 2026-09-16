@@ -1148,8 +1148,8 @@ class SketchProcessor:
 
         joint_feature_target_vector = np.array(np.zeros((M, 1)))
         base_target_cofactors = base_target_cofactors * aug_count[..., np.newaxis]
-        y_t_y = base_target_cofactors[:, 0, :]
-        y_t_y = y_t_y.sum(axis=0)
+        # A scalar rather than a (1,) array: the scoring converts it with float(), which NumPy >= 2.5 rejects for arrays
+        y_t_y = base_target_cofactors[:, 0, :].sum()
         base_target_cofactors = base_target_cofactors[:, 1:, :]
         joint_feature_target_vector[:base_target_cofactors.shape[1], :] = base_target_cofactors.sum(axis=0)
         joint_target_cofactors = base_target_sum[:, :, np.newaxis] * aug_sum[:, np.newaxis, :]
