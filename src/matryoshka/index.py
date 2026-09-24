@@ -7,6 +7,7 @@ import warnings
 
 import pgpq
 import pyarrow as pa
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 import pyarrow.parquet as pq
 import ray
 
@@ -35,6 +36,21 @@ from matryoshka.utils.sampling import priority_sampling, reweight
 # array cannot exceed 2 GiB, and converting a whole flush at once multiplies its memory footprint.
 _WRITE_SLICE_BYTES = 256 * 1024 ** 2
 
+# Ray errors raised when the worker processing a table died or became unreachable (e.g., after being killed by the
+# out-of-memory killer): the worker is replaced and the table retried, up to `max_table_attempts` times
+_WORKER_FAILURES = (
+    ray.exceptions.RayActorError,
+    ray.exceptions.WorkerCrashedError,
+    ray.exceptions.OutOfMemoryError,
+    ray.exceptions.NodeDiedError,
+    ray.exceptions.ObjectLostError,
+)
+
+
+def _error_line(log_message: str) -> str:
+    '''First line of a table's log that reports an error, used as the reason why the table was not indexed.'''
+    return next((line for line in log_message.split('\n') if 'Error' in line), log_message)
+
 
 def _cast_in_slices(batch: pa.RecordBatch, target_schema: pa.Schema):
     '''Cast a record batch to the target schema, halving it while one of its arrays exceeds Arrow's 2 GiB limit.'''
@@ -51,6 +67,18 @@ def _cast_in_slices(batch: pa.RecordBatch, target_schema: pa.Schema):
     half = batch.num_rows // 2
     yield from _cast_in_slices(batch.take(pa.array(range(half))), target_schema)
     yield from _cast_in_slices(batch.take(pa.array(range(half, batch.num_rows))), target_schema)
+
+def _column_fingerprints(df: pl.DataFrame, columns: list[str]) -> dict[str, int]:
+    '''Order-sensitive fingerprint of each column, used to drop exact duplicate columns.
+
+    Every value hash is combined with the hash of its row position before summing: a plain sum of value hashes is the
+    same for columns holding the same values in different rows (e.g., two value indicators with as many ones), which
+    would drop distinct features as duplicates.
+    '''
+    positions = pl.int_range(pl.len(), dtype=pl.UInt64).hash()
+    fingerprints = df.select([pl.col(c).hash().xor(positions).sum().alias(c) for c in columns]).row(0)
+    return dict(zip(columns, fingerprints))
+
 
 # ---------------------------------------------------------------------------
 # Pluggable median representation for {num_state}.values_
@@ -112,7 +140,39 @@ _MEDIAN_BACKENDS = {
 
 
 class ExhaustiveIndex(DBHandler):
-    def __init__(self, data_dir: str = None, feature_selection_table_name: str = None, overlap_table_name: str = None, tunnel: bool = False, batch_size: int = 1, max_workers: int = 1, feature_extraction: bool = False, prune_flag: bool = False, enable_sampling: bool = False, update_support: bool = False, max_cols: int = 100, median_backend: str = 'exact', settings=None, log_dir: str = None, silent: bool = False) -> None:
+    def __init__(self, data_dir: str = None, feature_selection_table_name: str = None, overlap_table_name: str = None, tunnel: bool = False, batch_size: int = 1, max_workers: int = 1, feature_extraction: bool = False, prune_flag: bool = False, enable_sampling: bool = False, update_support: bool = False, max_cols: int = 100, median_backend: str = 'exact', settings=None, log_dir: str = None, silent: bool = False, category_indicators: bool = False, max_category_values: int = 10, min_category_coverage: float = 0.5, max_table_attempts: int = 2, write_workers: int = 1, max_pending_flushes: int = None) -> None:
+        # When True, the values of text columns are also indexed as per-key shares (see `_category_indicator_query`),
+        # so that they are candidate features when every key occurs once. The update path (`_derive_features_from_state`)
+        # and the feature-extraction grouping do not reproduce these features, hence the combinations are rejected.
+        if category_indicators and (update_support or feature_extraction):
+            raise ValueError('category_indicators is not supported together with update_support or feature_extraction')
+        if max_category_values < 1:
+            raise ValueError(f'max_category_values must be at least 1, got {max_category_values}')
+        if not 0.0 < min_category_coverage <= 1.0:
+            raise ValueError(f'min_category_coverage must lie in (0, 1], got {min_category_coverage}')
+        self.category_indicators = category_indicators
+        self.max_category_values = max_category_values
+        self.min_category_coverage = min_category_coverage
+        # A table whose worker dies (e.g., killed by the out-of-memory killer) is retried on a fresh worker until it has
+        # been attempted this many times. Every worker processes one table at a time, so a dying worker only fails the
+        # table it was processing.
+        if max_table_attempts < 1:
+            raise ValueError(f'max_table_attempts must be at least 1, got {max_table_attempts}')
+        self.max_table_attempts = max_table_attempts
+        # With several Ray workers, flushes are written to PostgreSQL by this many background threads, each holding
+        # its own connection: the workers are handed the next tables while a flush is written, and the COPY commands
+        # (whose cost is dominated by the compression of the index rows by their single PostgreSQL backend) run in
+        # parallel. At most `max_pending_flushes` flushes (default: `write_workers` + 1) are queued or being written,
+        # which bounds the index rows held in memory: the scheduler waits for a flush to finish before collecting the
+        # results of further tables.
+        if write_workers < 1:
+            raise ValueError(f'write_workers must be at least 1, got {write_workers}')
+        self.write_workers = write_workers
+        self.max_pending_flushes = write_workers + 1 if max_pending_flushes is None else max_pending_flushes
+        if self.max_pending_flushes < 1:
+            raise ValueError(f'max_pending_flushes must be at least 1, got {max_pending_flushes}')
+        # (table_index, table_name, reason) of every table the last `index_lake` call could not index
+        self.failed_tables: list[tuple[int, str, str]] = []
         super().__init__(feature_selection_table_name, overlap_table_name, tunnel, settings=settings)
         self.data_dir = data_dir
         self.batch_size = batch_size
@@ -156,6 +216,7 @@ class ExhaustiveIndex(DBHandler):
         Wrapper for the `index_table` method.
         '''
         self.logger.info('Starting process')
+        failed_tables = []
         conn = self.db_connect_pool()
         self.create_tables(conn, include_state_tables=self.update_support)
         conn.closeall()
@@ -198,30 +259,36 @@ class ExhaustiveIndex(DBHandler):
                     all_items = [(name, lf, table_index + i) for i, (name, lf) in enumerate(loader.load_tables(self.data_dir, self.logger, checkpoint_name))]
 
                 total = len(all_items)
-                self.logger.info(f'Scheduling {total} tables across {self.max_workers} workers (sliding window)')
+                self.logger.info(f'Scheduling {total} tables across {self.max_workers} workers (one table per worker at a time)')
 
-                window = 2 * self.max_workers
+                # Every worker processes one table at a time: a worker that dies (e.g., killed by the out-of-memory
+                # killer) then only fails the table it was processing, which is retried on a fresh worker
                 next_i = 0
-                pending = {}  # future -> (name, table_index)
-                rr = 0
+                pending = {}  # future -> (item, worker slot, worker, attempt)
+                idle_slots = list(range(len(processors)))[::-1]
+                retries = []  # (item, attempt) of the tables to retry, submitted before the next ones
 
-                def submit(item):
-                    nonlocal rr
+                def submit(item, attempt=1):
                     name, payload, idx = item
-                    proc = processors[rr % len(processors)]
-                    rr += 1
+                    slot = idle_slots.pop()
+                    proc = processors[slot]
                     if use_sources:
                         fut = proc.process_source.remote((name, payload, idx))
                     else:
                         # Fallback: legacy path still materializes on driver
                         df = payload.collect() if isinstance(payload, pl.LazyFrame) else payload
                         fut = proc.process_table.remote((name, df, idx))
-                    pending[fut] = (name, idx)
+                    pending[fut] = (item, slot, proc, attempt)
 
-                # Prime the window
-                while next_i < total and len(pending) < window:
-                    submit(all_items[next_i])
-                    next_i += 1
+                def fill_idle_workers():
+                    nonlocal next_i
+                    while idle_slots and retries:
+                        submit(*retries.pop(0))
+                    while idle_slots and next_i < total:
+                        submit(all_items[next_i])
+                        next_i += 1
+
+                fill_idle_workers()
 
                 index_data = []
                 results_buffer = []  # (table_index, success)
@@ -229,45 +296,93 @@ class ExhaustiveIndex(DBHandler):
                 flush_num = 0
                 flush_start = time.perf_counter()
 
-                while pending:
-                    ready_futs, _ = ray.wait(list(pending.keys()), num_returns=1)
-                    fut = ready_futs[0]
-                    pending.pop(fut, None)
-                    try:
-                        data, idx, success, log_message = ray.get(fut)
-                    except Exception as e:
-                        self.logger.error(f'Task failed with exception: {e}')
-                        data, idx, success, log_message = [], -1, False, ''
+                # Flushes are written in the background (see `write_workers`); the pool is captured here so that the
+                # writers are unaffected by `_replace_worker` detaching it from `self`
+                conn_pool = self._conn_pool
+                writers = ThreadPoolExecutor(max_workers=self.write_workers, thread_name_prefix='flush')
+                pending_flushes = set()
 
-                    for line in log_message.split('\n') if log_message else []:
-                        if 'Error' in line:
-                            self.logger.error(line)
-                        else:
-                            self.logger.info(line)
-                    if data:
-                        index_data.extend(data)
-                    results_buffer.append((idx, success))
-                    completed += 1
-                    if idx >= 0 and idx + 1 > table_index:
-                        table_index = idx + 1
+                def reap_flushes(wait_below: int = None):
+                    '''
+                    Drop the finished flushes, re-raising the error of a failed one, and when `wait_below` is given
+                    wait until fewer than that many flushes are pending.
+                    '''
+                    nonlocal pending_flushes
+                    while True:
+                        done = {f for f in pending_flushes if f.done()}
+                        pending_flushes -= done
+                        for flush_fut in done:
+                            flush_fut.result()
+                        if wait_below is None or len(pending_flushes) < wait_below:
+                            return
+                        wait(pending_flushes, return_when=FIRST_COMPLETED)
 
-                    # Submit next task to keep window full
-                    if next_i < total:
-                        submit(all_items[next_i])
-                        next_i += 1
-
-                    # Flush periodically
-                    if completed % flush_every == 0 and index_data:
-                        flush_num += 1
-                        self._flush_index_data(index_data, results_buffer, flush_num, flush_start)
-                        index_data = []
-                        results_buffer = []
-                        flush_start = time.perf_counter()
-
-                # Final flush
-                if index_data:
+                def submit_flush():
+                    nonlocal index_data, results_buffer, flush_num, flush_start
                     flush_num += 1
-                    self._flush_index_data(index_data, results_buffer, flush_num, flush_start)
+                    reap_flushes(wait_below=self.max_pending_flushes)
+                    pending_flushes.add(writers.submit(self._flush_index_data, index_data, results_buffer, flush_num, flush_start, conn_pool))
+                    index_data = []
+                    results_buffer = []
+                    flush_start = time.perf_counter()
+
+                try:
+                    while pending:
+                        # A failed flush stops the run as soon as it is noticed, rather than at the next submission
+                        reap_flushes()
+                        ready_futs, _ = ray.wait(list(pending.keys()), num_returns=1)
+                        fut = ready_futs[0]
+                        item, slot, proc, attempt = pending.pop(fut)
+                        name, _, idx = item
+                        try:
+                            data, _, success, log_message = ray.get(fut)
+                        except _WORKER_FAILURES as e:
+                            self.logger.error(f'Worker failed on table {idx} - {name} (attempt {attempt} of {self.max_table_attempts}): {e}')
+                            self._replace_worker(processors, slot, proc)
+                            if attempt < self.max_table_attempts:
+                                idle_slots.append(slot)
+                                retries.append((item, attempt + 1))
+                                fill_idle_workers()
+                                continue
+                            failed_tables.append((idx, name, f'worker failed {attempt} time(s): {type(e).__name__}'))
+                            data, success, log_message = [], False, ''
+                        except Exception as e:
+                            self.logger.error(f'Task failed on table {idx} - {name} with exception: {e}')
+                            failed_tables.append((idx, name, f'{type(e).__name__}: {e}'))
+                            data, success, log_message = [], False, ''
+                        else:
+                            # Tables skipped on purpose (e.g., too wide) are not failures, unlike those raising an error
+                            if not success and 'Error' in log_message:
+                                failed_tables.append((idx, name, _error_line(log_message)))
+
+                        for line in log_message.split('\n') if log_message else []:
+                            if 'Error' in line:
+                                self.logger.error(line)
+                            else:
+                                self.logger.info(line)
+                        if data:
+                            index_data.extend(data)
+                        results_buffer.append((idx, success))
+                        completed += 1
+                        if idx >= 0 and idx + 1 > table_index:
+                            table_index = idx + 1
+
+                        # Hand the next table (or a table to retry) to the worker that became idle
+                        idle_slots.append(slot)
+                        fill_idle_workers()
+
+                        # Flush periodically
+                        if completed % flush_every == 0 and index_data:
+                            submit_flush()
+
+                    # Final flush
+                    if index_data:
+                        submit_flush()
+                    reap_flushes(wait_below=1)
+                finally:
+                    # On an error, the queued flushes are dropped and the ones being written are completed before
+                    # the connection pool is closed
+                    writers.shutdown(wait=True, cancel_futures=True)
             else:
                 # Sequential path (unchanged behavior with existing batching)
                 all_tables = list(loader.load_tables(self.data_dir, self.logger, checkpoint_name))
@@ -280,6 +395,8 @@ class ExhaustiveIndex(DBHandler):
                     index_data = []
                     for data in table_data:
                         d, t_idx, success, log_message = processor.process_table(data)
+                        if not success and 'Error' in log_message:
+                            failed_tables.append((t_idx, data[0], _error_line(log_message)))
                         for line in log_message.split('\n'):
                             if 'Error' in line:
                                 self.logger.error(line)
@@ -299,18 +416,45 @@ class ExhaustiveIndex(DBHandler):
             if ray.is_initialized():
                 ray.shutdown()
 
+        self.failed_tables = failed_tables
+        if failed_tables:
+            self.logger.error(
+                f'{len(failed_tables)} table(s) could not be indexed: '
+                + '; '.join(f'{idx} - {name} ({reason})' for idx, name, reason in failed_tables)
+            )
         self.logger.info('Finished indexing tables in the folder')
         self.logger.handlers.clear()
 
         return table_index
 
 
-    def _flush_index_data(self, index_data: list, results: list, flush_num: int, flush_start: float) -> None:
+    def _replace_worker(self, processors: list, slot: int, worker) -> None:
+        '''
+        Replaces the Ray worker in `slot` after one of its tasks failed because the worker died or became
+        unreachable, unless an earlier failure of another of its tasks already replaced it.
+        '''
+        if processors[slot] is not worker:
+            return
+        try:
+            ray.kill(worker, no_restart=True)
+        except Exception:
+            pass
+        # Creating a worker ships `self.index_table`, hence `self`, which the connection pool (holding weakrefs) makes
+        # unpicklable: detach it meanwhile
+        pool = getattr(self, '_conn_pool', None)
+        self._conn_pool = None
+        try:
+            processors[slot] = RayTableProcessor.remote(self.index_table, max_cols=self.max_cols)
+        finally:
+            self._conn_pool = pool
+
+
+    def _flush_index_data(self, index_data: list, results: list, flush_num: int, flush_start: float, conn_pool: ConnectionPool = None) -> None:
         '''Concat accumulated index_data rows and write them to Postgres using the persistent pool.'''
         final_table = pl.concat(index_data, how='vertical_relaxed')
         rows_to_write = final_table.height
         write_start = time.perf_counter()
-        self.write_to_db(final_table, self.feature_selection_table_name)
+        self.write_to_db(final_table, self.feature_selection_table_name, conn_pool=conn_pool)
         write_elapsed = time.perf_counter() - write_start
         successful = sum(1 for _, success in results if success)
         failed = len(results) - successful
@@ -505,11 +649,9 @@ class ExhaustiveIndex(DBHandler):
                 continue
 
             feature_slice = result.select([group_col] + mapped_cols)
-            # find the base column
-            for feature_slice_col in feature_slice.columns:
-                if feature_slice_col.count('_') == 1:
-                    base_col = feature_slice_col
-                    break
+            # find the base column (a plain aggregate such as `<column>_mean`); a group made only of value shares
+            # (`<column>_<value>_share`) has none, and any of its columns can lead the combinations then
+            base_col = next((c for c in mapped_cols if c.count('_') == 1), mapped_cols[0])
 
             combs = self._combinations_with_element(mapped_cols, base_col)
             features_col_indices = [i for i in range(max_feature_index, len(combs) + max_feature_index)]
@@ -643,10 +785,7 @@ class ExhaustiveIndex(DBHandler):
                 .join(non_numeric_result, on=group_col, how='inner')
         )
         feature_cols = [col for col in combined_result.columns if col != group_col]
-        col_hashes = {
-            col: combined_result[col].hash().sum()
-            for col in feature_cols
-        }
+        col_hashes = _column_fingerprints(combined_result, feature_cols) if feature_cols else {}
         unique_cols = list({v: k for k, v in col_hashes.items()}.values())
         combined_result = combined_result.select([group_col] + unique_cols)
         constant_check = (
@@ -806,7 +945,76 @@ class ExhaustiveIndex(DBHandler):
                 )
         )
 
+        if getattr(self, 'category_indicators', False):
+            indicators = self._category_indicator_query(table, group_col, non_numeric_cols_trunc)
+            if indicators.width > 1:
+                result = result.join(indicators, on=group_col, how='left')
+
         return result
+
+
+    def _category_indicator_query(self, table: pl.LazyFrame, group_col: str, non_numeric_cols: list[str]) -> pl.DataFrame:
+        '''
+        Encodes the values of text columns as per-key shares.
+
+        The count features of `_non_numeric_query` describe how many distinct values a key holds, which is constant
+        (and dropped) when every key occurs once, so the values themselves are otherwise never candidate features.
+        A column is encoded if its `max_category_values` most frequent values cover at least `min_category_coverage`
+        of the rows, which excludes identifiers and free text. Each of these values yields a `<column>_<value>_share`
+        feature: the share of the key's rows holding the value (0 or 1 when the key occurs once). Missing values hold
+        none of the values. If the most frequent values cover every row, the most frequent one is left out, as the
+        shares would otherwise always sum to one.
+
+        Parameters:
+        ----------
+        table: pl.LazyFrame
+            Table to index
+
+        group_col: str
+            Name of the key column
+
+        non_numeric_cols: list[str]
+            Names of the text columns to encode
+
+        Returns:
+        -------
+        pl.DataFrame: Key column and one share column per encoded value
+        '''
+        data = table.select([group_col] + non_numeric_cols).collect()
+        aggregations = []
+        for c in non_numeric_cols:
+            # Renamed so that the counts do not collide with a column called 'count'
+            values = data.get_column(c).cast(pl.String).alias('value')
+            counts = (
+                values
+                    .drop_nulls()
+                    .value_counts(name='count')
+                    .sort(['count', 'value'], descending=[True, False])
+                    .head(self.max_category_values)
+            )
+            covered = int(counts.get_column('count').sum()) if counts.height else 0
+            if data.height == 0 or covered < self.min_category_coverage * data.height:
+                continue
+            top_values = counts.get_column('value').to_list()
+            if covered == data.height:
+                top_values = top_values[1:]
+            names = set()
+            for rank, value in enumerate(top_values):
+                # Normalized like column names, so that the value contains no underscore
+                name = process_key(value) or f'value{rank}'
+                if name in names:
+                    name = f'{name}{rank}'
+                names.add(name)
+                aggregations.append(
+                    (pl.col(c).cast(pl.String) == value).fill_null(False).cast(pl.Float64).mean().alias(f'{c}_{name}_share')
+                )
+
+        if isinstance(data.schema[group_col], pl.String):
+            data = data.with_columns(pl.col(group_col).map_elements(lambda s: process_key(s), return_dtype=pl.String))
+        if not aggregations:
+            return data.select(group_col).unique()
+
+        return data.group_by(group_col).agg(aggregations)
 
 
     def _prepare_query_inputs(self, group_col: str, cols: list[str], useful_cols: list[str]):
@@ -1007,7 +1215,7 @@ class ExhaustiveIndex(DBHandler):
                     for batch in pf.iter_batches(batch_size=50_000):
                         yield batch.cast(target_schema)
 
-    def write_to_db(self, feature_selection_index: pl.DataFrame, pg_table_name: str) -> None:
+    def write_to_db(self, feature_selection_index: pl.DataFrame, pg_table_name: str, conn_pool: ConnectionPool = None) -> None:
         match pg_table_name:
             case self.feature_selection_table_name:
                 target_schema = pa.schema([
@@ -1033,9 +1241,10 @@ class ExhaustiveIndex(DBHandler):
                     pa.field('key_col_index', pa.int32()),
                     pa.field('row_index', pa.int64())
                 ])
-        # Reuse persistent pool if available (set up by index_lake), otherwise create a transient one.
+        # Reuse the given or persistent pool if available (set up by index_lake), otherwise create a transient one.
         transient = False
-        conn_pool = getattr(self, '_conn_pool', None)
+        if conn_pool is None:
+            conn_pool = getattr(self, '_conn_pool', None)
         if conn_pool is None:
             conn_pool = ConnectionPool(self.conninfo, min_size=8, max_size=32, timeout=1800)
             conn_pool.open()
@@ -1701,7 +1910,7 @@ class ExhaustiveIndex(DBHandler):
         feature_cols = [c for c in combined_result.columns if c != group_col]
         if not feature_cols:
             return combined_result
-        col_hashes = {c: combined_result[c].hash().sum() for c in feature_cols}
+        col_hashes = _column_fingerprints(combined_result, feature_cols)
         unique_cols = list({v: k for k, v in col_hashes.items()}.values())
         combined_result = combined_result.select([group_col] + unique_cols)
         constant_check = combined_result.select(

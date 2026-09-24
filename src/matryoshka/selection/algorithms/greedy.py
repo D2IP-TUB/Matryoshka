@@ -33,7 +33,9 @@ _FIT_FREE_METRICS = {'conditional_gcv'}
 # aggregations of a numeric column (see matryoshka.index._index_features).
 # Two candidates whose raw header names differ only by one of these suffixes
 # are considered redundant for selection purposes.
-_AGGREGATION_SUFFIXES = ('min', 'max', 'median', 'mean', 'nunique')
+# `share` marks the per-value shares of text columns (see `ExhaustiveIndex._category_indicator_query`): every value is its
+# own candidate, so the values of the same column are not siblings of each other
+_AGGREGATION_SUFFIXES = ('min', 'max', 'median', 'mean', 'nunique', 'share')
 
 
 def _strip_aggregation_suffix(header: str | None) -> str | None:

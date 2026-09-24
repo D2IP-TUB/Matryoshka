@@ -155,6 +155,13 @@ print(result.plan)          # ['table_1_2.csv.horizontaldistancetohydrology_min'
 print(result.table.shape)   # the augmented query table
 ```
 
+By default, text columns are indexed only through per-key counts of their
+distinct values, which are constant (and dropped) when every key occurs once.
+`index.build(path, category_indicators=True)` also indexes their values as
+per-key shares (`<column>_<value>_share`) for columns whose 10 most frequent
+values cover at least half of the rows, so that, e.g., a passenger's sex is a
+candidate feature of a one-to-one join.
+
 The same pipeline from the shell:
 
 ```bash

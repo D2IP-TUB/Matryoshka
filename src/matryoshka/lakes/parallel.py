@@ -50,9 +50,13 @@ class TableProcessor:
             error_msg = f'Error processing table {table_index} - {table_name}: {e}'
             log_messages.append(error_msg)
             table_name_clean = table_name.split('/')[-1].split('.')[0] # save failed table for debugging
-            table.collect().write_csv(f'/app/data/{table_name_clean}.tsv', separator='\t')
-            with open('/app/data/last_table_index.txt', 'w') as f:
-                f.write(str(table_index))
+            # The dump directory only exists in the container setup: failing to write it must not abort the build
+            try:
+                table.collect().write_csv(f'/app/data/{table_name_clean}.tsv', separator='\t')
+                with open('/app/data/last_table_index.txt', 'w') as f:
+                    f.write(str(table_index))
+            except OSError:
+                pass
             return index_data, table_index, False, '\n'.join(log_messages)
 
 
@@ -82,9 +86,13 @@ class TableProcessor:
             error_msg = f'Error processing table {table_index} - {table_name}: {e}'
             log_messages.append(error_msg)
             table_name_clean = table_name.split('/')[-1].split('.')[0] # save failed table for debugging
-            table.collect().write_csv(f'/app/data/{table_name_clean}.tsv', separator='\t')
-            with open('/app/data/last_table_index.txt', 'w') as f:
-                f.write(str(table_index))
+            # The dump directory only exists in the container setup: failing to write it must not abort the build
+            try:
+                table.collect().write_csv(f'/app/data/{table_name_clean}.tsv', separator='\t')
+                with open('/app/data/last_table_index.txt', 'w') as f:
+                    f.write(str(table_index))
+            except OSError:
+                pass
             return index_data, table_index, False, '\n'.join(log_messages)
 
 
@@ -106,9 +114,13 @@ class TableProcessor:
             error_msg = f'Error processing table {table_index} - {table_name}: {e}'
             log_messages.append(error_msg)
             table_name_clean = table_name.split('/')[-1].split('.')[0] # save failed table for debugging
-            table.collect().write_csv(f'/app/data/{table_name_clean}.tsv', separator='\t')
-            with open('/app/data/last_table_index.txt', 'w') as f:
-                f.write(str(table_index))
+            # The dump directory only exists in the container setup: failing to write it must not abort the build
+            try:
+                table.collect().write_csv(f'/app/data/{table_name_clean}.tsv', separator='\t')
+                with open('/app/data/last_table_index.txt', 'w') as f:
+                    f.write(str(table_index))
+            except OSError:
+                pass
             return index_data, table_index, False, '\n'.join(log_messages)
 
 

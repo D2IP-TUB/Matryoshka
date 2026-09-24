@@ -14,6 +14,7 @@ for callers who need the full parameter surface.
 from __future__ import annotations
 
 import os
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -124,6 +125,8 @@ class LakeIndex:
         self.feature_table = feature_table or f'{name}{FS_INDEX_SUFFIX}'
         self.overlap_table = overlap_table or f'{name}{OVERLAP_INDEX_SUFFIX}'
         self.settings = resolve_settings(settings)
+        # (table_index, table_name, reason) of every table the last `build` could not index
+        self.failed_tables: list[tuple[int, str, str]] = []
 
     def __repr__(self) -> str:
         return (
@@ -147,6 +150,11 @@ class LakeIndex:
         **index_kwargs: Any,
     ) -> int:
         """Index the lake at ``path`` and return the number of tables processed.
+
+        Tables that could not be indexed, because they raised an error or their
+        worker kept dying (e.g., killed by the out-of-memory killer) after
+        ``max_table_attempts`` attempts, are counted as processed: they are listed
+        in :attr:`failed_tables` and reported with a ``RuntimeWarning``.
 
         ``path`` is either a directory of tables, which is indexed in one pass,
         or a directory of archives (``.tar.gz``, ``.tar``, ``.zip``), each of
@@ -175,6 +183,15 @@ class LakeIndex:
             Builds the btree indexes on the finished tables. Retrieval is
             unusably slow without them; disable only to defer the cost when
             appending more archives afterwards.
+        index_kwargs
+            Further options of :class:`matryoshka.index.ExhaustiveIndex`, e.g.
+            ``category_indicators=True`` to also index the values of text
+            columns as per-key shares (``max_category_values`` and
+            ``min_category_coverage`` control which values and columns), so
+            that they are candidate features when every key occurs once. Not
+            supported with ``update_support`` or ``feature_extraction``.
+            ``max_table_attempts`` (default 2) bounds how often a table is
+            attempted when its worker dies, each time on a fresh worker.
         """
         from .index import ExhaustiveIndex
 
@@ -183,6 +200,7 @@ class LakeIndex:
             raise FileNotFoundError(f'lake path does not exist: {path}')
 
         sources = self._resolve_sources(path)
+        self.failed_tables = []
         table_index = start_table_index
         worker: ExhaustiveIndex | None = None
         for source in sources:
@@ -204,6 +222,7 @@ class LakeIndex:
             # original offline/main.py added one here as well, which left a gap
             # in `table_index` for every archive after the first.
             table_index = worker.index_lake(table_index, from_tar_archive=from_tar)
+            self.failed_tables.extend(worker.failed_tables)
 
         if worker is not None and create_btree_indexes:
             conn = worker.db_connect()
@@ -211,6 +230,12 @@ class LakeIndex:
                 worker.create_db_table_index(conn)
             finally:
                 conn.close()
+        if self.failed_tables:
+            warnings.warn(
+                f'{len(self.failed_tables)} table(s) could not be indexed; see LakeIndex.failed_tables',
+                RuntimeWarning,
+                stacklevel=2,
+            )
         return table_index - start_table_index
 
     @staticmethod

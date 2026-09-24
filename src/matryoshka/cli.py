@@ -59,6 +59,8 @@ def build_parser() -> argparse.ArgumentParser:
                             'update_table() and find_union_peer()')
     build.add_argument('--feature-extraction', action='store_true',
                        help='enable the extended per-key aggregate set')
+    build.add_argument('--category-indicators', action='store_true',
+                       help='also index the values of text columns as per-key shares')
     build.add_argument('--no-btree', action='store_true',
                        help='skip btree index creation; retrieval will be slow '
                             'until it is run')
@@ -123,10 +125,16 @@ def _cmd_index_build(args) -> int:
         update_support=args.update_support,
         start_table_index=args.start_table_index,
         create_btree_indexes=not args.no_btree,
+        category_indicators=args.category_indicators,
     )
     stats = index.stats()
     print(f'indexed {n} tables; {stats.rows} index rows over '
           f'{stats.tables_indexed} tables, {stats.total_size}')
+    if index.failed_tables:
+        print(f'{len(index.failed_tables)} table(s) could not be indexed:', file=sys.stderr)
+        for table_index, table_name, reason in index.failed_tables:
+            print(f'  {table_index} - {table_name}: {reason}', file=sys.stderr)
+        return 1
     return 0
 
 

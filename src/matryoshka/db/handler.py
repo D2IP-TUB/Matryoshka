@@ -241,7 +241,7 @@ class DBHandler:
                 cur.execute(query)
                 conn.commit()
         except psycopg2.errors.DuplicateTable:
-            self.conn.rollback()
+            conn.rollback()
 
 
     def _check_disk_space(self, threshold_gb=10):
