@@ -76,6 +76,16 @@ def test_binning_expands_into_indicator_columns():
     assert out.width == 1 + 3 + 1
 
 
+def test_query_table_without_features_keeps_key_and_target():
+    # A query table can come without features, e.g. when only the join key and
+    # the target are known; binning then has nothing to expand.
+    for features in (None, []):
+        source = raw_table().select('zip', 'label') if features is None else raw_table()
+        out = prepare_query_table(source, key='zip', target='label', features=features, n_bins=4)
+        assert out.columns == ['zip', 'label']
+        assert out.height == 4
+
+
 def test_unknown_columns_raise():
     with pytest.raises(KeyError):
         prepare_query_table(raw_table(), key='absent', target='label')

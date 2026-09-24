@@ -748,12 +748,21 @@ class SketchProcessor:
         base_sum = np.array(sub_table.select('sum').to_series().to_list())
         base_count = np.array(sub_table.select('count').to_series().to_list()).reshape(-1, 1)
 
+        if base_sum.shape[1] > 0:
+            target_sum = base_sum[:, 0].reshape(-1, 1)
+            target_cofactors = base_cofactors[:, :, 0].reshape(-1, base_cofactors.shape[1], 1)
+        else:
+            # A query table without features has empty sketches (the class is sketched by the grouping), so the target
+            # fields, which the regression layout reads from the first column, are zeros
+            target_sum = np.zeros((base_sum.shape[0], 1))
+            target_cofactors = np.zeros((base_sum.shape[0], 1, 1))
+
         base_table_sketch = BaseSketch(
             base_count,
             features_sum=base_sum,
-            target_sum=base_sum[:, 0].reshape(-1, 1),
+            target_sum=target_sum,
             features_cofactors=base_cofactors,
-            target_cofactors=base_cofactors[:, :, 0].reshape(-1, base_cofactors.shape[1], 1)
+            target_cofactors=target_cofactors
         )
         local_dict[label[0]] = base_table_sketch
 

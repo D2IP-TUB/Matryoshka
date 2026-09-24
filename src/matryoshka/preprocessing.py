@@ -62,7 +62,8 @@ def prepare_query_table(
         Name of the prediction target.
     features
         Feature columns to retain. Defaults to every column other than ``key``
-        and ``target``.
+        and ``target``. The query table can have no features, in which case it
+        holds the key and the target only.
     task
         ``'classification'`` ordinal-encodes the target; ``'regression'`` casts
         it to ``Float64``.
@@ -124,26 +125,24 @@ def prepare_query_table(
             continue
         encoded.append(values.rename(column))
 
-    if not encoded:
-        raise ValueError('no usable feature columns remain after encoding')
-
     features_df = pl.DataFrame(encoded)
     if n_bins is not None:
         if n_bins < 2:
             raise ValueError(f'n_bins must be at least 2, got {n_bins}')
-        binned = features_df.select([
-            pl.col(c).qcut(
-                n_bins, labels=[str(i) for i in range(n_bins)], allow_duplicates=True
-            ).alias(c)
-            for c in features_df.columns
-        ])
-        features_df = binned.to_dummies(drop_first=True)
+        if encoded:
+            binned = features_df.select([
+                pl.col(c).qcut(
+                    n_bins, labels=[str(i) for i in range(n_bins)], allow_duplicates=True
+                ).alias(c)
+                for c in features_df.columns
+            ])
+            features_df = binned.to_dummies(drop_first=True)
 
     keys = df.get_column(key).cast(pl.String).map_elements(
         process_key, return_dtype=pl.String
     ).rename(key)
 
-    out = pl.DataFrame([keys]).hstack(features_df).hstack(pl.DataFrame([y]))
+    out = pl.DataFrame([keys, *features_df.get_columns(), y])
     assert out.null_count().to_numpy().sum() == 0, 'prepared query table contains nulls'
     return out
 

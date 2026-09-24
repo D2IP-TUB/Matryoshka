@@ -401,13 +401,26 @@ class JoinSelection(JoinDiscovery):
                     for i in range(len(numeric_cols))
                     for j in range(i, len(numeric_cols))
                 ]
-                user_table_agg = user_table_processed.group_by([query_column_name, target_column_name]).agg(
-                    [
-                        pl.len().alias('count'),
-                        pl.concat_list(pl.col(numeric_cols).sum()).alias('sum'),
-                        pl.concat_list(cofactor_upper_exprs).alias('cofactor_upper'),
-                    ]
-                )
+                if numeric_cols:
+                    user_table_agg = user_table_processed.group_by([query_column_name, target_column_name]).agg(
+                        [
+                            pl.len().alias('count'),
+                            pl.concat_list(pl.col(numeric_cols).sum()).alias('sum'),
+                            pl.concat_list(cofactor_upper_exprs).alias('cofactor_upper'),
+                        ]
+                    )
+                else:
+                    # A query table without features (key and target only) has empty sketches, since the target is
+                    # sketched through the grouping rather than as a column
+                    user_table_agg = (
+                        user_table_processed
+                            .group_by([query_column_name, target_column_name])
+                            .agg(pl.len().alias('count'))
+                            .with_columns(
+                                pl.lit([], dtype=pl.List(pl.Float64)).alias('sum'),
+                                pl.lit([], dtype=pl.List(pl.Float64)).alias('cofactor_upper'),
+                            )
+                    )
                 user_table_agg = user_table_agg.sort(query_column_name, maintain_order=True)
 
         return user_table_agg
