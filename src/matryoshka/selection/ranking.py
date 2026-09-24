@@ -188,10 +188,11 @@ class OverlapRanking:
 
             Result = namedtuple('JointTuple', ['class_dict', 'new_features_count', 'aug_feature_indices', 'aug_table_sketches_per_class'])
             class_dict = {}
-            for label, (joint_cofactor_matrix_std, features_mean, joint_count, _) in joint_tuples.items():
+            for label, (joint_cofactor_matrix_std, features_mean, joint_count, _, features_std) in joint_tuples.items():
                 class_dict[label] = {
                     'joint_cofactor_matrix': joint_cofactor_matrix_std,
                     'features_mean': features_mean,
+                    'features_std': features_std,
                     'joint_count': joint_count
                 }
             new_features_count = len(features_mean) - n_init_features
@@ -359,12 +360,13 @@ class OverlapRanking:
 
         Result = namedtuple('JointTuple', ['class_dict', 'new_features_count', 'aug_feature_indices', 'aug_table_sketches_per_class'])
         class_dict = {}
-        for label, (joint_cofactor_matrix_std, features_mean, joint_count, _) in joint_tuples.items():
+        for label, (joint_cofactor_matrix_std, features_mean, joint_count, _, features_std) in joint_tuples.items():
             class_dict[label] = {
                 # 'joint_cofactor_matrix': joint_cofactor_matrix_std[np.ix_(keys_to_keep_all, keys_to_keep_all)],
                 'joint_cofactor_matrix': joint_cofactor_matrix_std,
                 # 'features_mean': features_mean[keys_to_keep_all],
                 'features_mean': features_mean,
+                'features_std': features_std,
                 'joint_count': joint_count
             }
 
@@ -375,7 +377,7 @@ class OverlapRanking:
         class_means = []
         class_counts = []
         class_covars = []
-        for joint_cofactor_matrix_std, features_mean, joint_count, new_features_count in joint_tuples.values():
+        for joint_cofactor_matrix_std, features_mean, joint_count, new_features_count, *_ in joint_tuples.values():
             class_means.append(features_mean)
             class_counts.append(joint_count)
             class_covars.append(joint_cofactor_matrix_std / joint_count)

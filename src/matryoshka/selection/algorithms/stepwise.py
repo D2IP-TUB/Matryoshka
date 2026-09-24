@@ -86,18 +86,8 @@ class IncrementalSelection:
                 new_features_count = joint_tuples.new_features_count
                 aug_feature_indices = joint_tuples.aug_feature_indices
                 aug_table_sketches_per_class = joint_tuples.aug_table_sketches_per_class
-                class_covariances = []
-                class_means = []
-                for label, _ in class_dict.items():
-                    class_covariances.append(class_dict[label]['joint_cofactor_matrix'] / class_dict[label]['joint_count'])
-                    class_means.append(class_dict[label]['features_mean'])
-                class_covariances = np.transpose(
-                    np.stack(class_covariances, axis=2),
-                    (2, 0, 1)
-                )
-                class_means = np.transpose(
-                    np.stack(class_means, axis=1),
-                    (1, 0)
+                class_means, class_covariances, _ = standardized_class_statistics(
+                    [class_dict[label] for label in class_dict]
                 )
                 model_instance = model(
                     0,

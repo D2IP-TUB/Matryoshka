@@ -946,22 +946,13 @@ class ForwardSelection(GreedyAlgo, RemoteMixin):
                             sketch_proc_per_class[label].remove_from_features_pool.remote(idx)
                         continue
 
+                    class_means, class_covariances, class_counts = standardized_class_statistics(
+                        [dic_per_class[label] for label in dic_per_class]
+                    )
                     task_params = {
-                        'class_covariances': np.transpose(
-                            np.stack(
-                                [
-                                    dic_per_class[label]['joint_cofactor_matrix'] / dic_per_class[label]['joint_count']
-                                    for label in dic_per_class
-                                ],
-                                axis=2
-                            ),
-                            (2, 0, 1)
-                        ),
-                        'class_means': np.stack(
-                            [dic_per_class[label]['features_mean'] for label in dic_per_class],
-                            axis=0
-                        ),
-                        'class_counts': np.array([dic_per_class[label]['joint_count'] for label in dic_per_class]),
+                        'class_covariances': class_covariances,
+                        'class_means': class_means,
+                        'class_counts': class_counts,
                         # Candidate block size (last n_Z columns of the joint),
                         # needed by the conditional-Mahalanobis proxy to split
                         # the joint into current (X) and candidate (Z) blocks.
@@ -1040,18 +1031,8 @@ class BackwardElimination(GreedyAlgo, RemoteMixin):
                 class_dict = joint_tuples.class_dict
                 new_features_count = joint_tuples.new_features_count
                 aug_feature_indices = joint_tuples.aug_feature_indices
-                class_covariances = []
-                class_means = []
-                for label, _ in class_dict.items():
-                    class_covariances.append(class_dict[label]['joint_cofactor_matrix'] / class_dict[label]['joint_count'])
-                    class_means.append(class_dict[label]['features_mean'])
-                class_covariances = np.transpose(
-                    np.stack(class_covariances, axis=2),
-                    (2, 0, 1)
-                )
-                class_means = np.transpose(
-                    np.stack(class_means, axis=1),
-                    (1, 0)
+                class_means, class_covariances, class_counts = standardized_class_statistics(
+                    [class_dict[label] for label in class_dict]
                 )
 
                 n_features = class_means.shape[1]
@@ -1066,7 +1047,6 @@ class BackwardElimination(GreedyAlgo, RemoteMixin):
                     0,
                     **({'metric': self.metric} if model.__name__ == 'ClassificationCholesky' else {})
                 )
-                class_counts = np.array([class_dict[label]['joint_count'] for label in class_dict])
                 params = {
                     'class_covariances': np.transpose(
                         np.stack(

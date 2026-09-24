@@ -78,6 +78,8 @@ class CollinearityAnalysis:
                     joint_tuples.class_dict[label]['joint_cofactor_matrix'] = joint_cofactor_matrix[np.ix_(complement, complement)]
                     features_mean = joint_tuples.class_dict[label]['features_mean']
                     joint_tuples.class_dict[label]['features_mean'] = features_mean[complement]
+                    if joint_tuples.class_dict[label].get('features_std') is not None:
+                        joint_tuples.class_dict[label]['features_std'] = joint_tuples.class_dict[label]['features_std'][complement]
 
                 aug_feature_indices = {i: aug_feature_indices[i] for i in aug_feature_indices if i not in pos_indices}
                 new_features_count = len(aug_feature_indices)

@@ -120,7 +120,7 @@ class FeatureSelectionModel(ABC):
                 if singularity:
                     raise LinAlgError(cond_number)
                 rss = self.y_t_y - self.coef_.T @ feature_target
-                tss = self.y_t_y - ((sum_y / joint_count) ** 2) / joint_count
+                tss = self.y_t_y  # the target sum of squares the sketch processors emit is centered
                 metric_score = 1 - (rss / tss)
 
             case 'adj_r2':
@@ -128,7 +128,7 @@ class FeatureSelectionModel(ABC):
                 if singularity:
                     raise LinAlgError(cond_number)
                 rss = self.y_t_y - self.coef_.T @ feature_target
-                tss = self.y_t_y - ((sum_y / joint_count) ** 2) / joint_count
+                tss = self.y_t_y  # the target sum of squares the sketch processors emit is centered
                 n = joint_count
                 p = joint_cofactor.shape[0]
                 metric_score = 1 - ( (1 - (1 - (rss / tss))) * (n - 1) / max(1, (n - p - 1)) )

@@ -6,6 +6,56 @@ from ..exceptions import LinAlgError
 from .base.model import FeatureSelectionModel
 
 
+def standardized_class_statistics(class_statistics):
+    r"""Class means, covariances and counts for the classification proxies, on one common scale.
+
+    Every class is sketched separately: its joint Gram matrix
+    (``joint_cofactor_matrix``) is standardized by the class's own feature
+    standard deviations (``features_std``), whereas its feature means
+    (``features_mean``) are in the features' units. Scoring class separability
+    on these mixed scales makes the scores grow with the squared units of the
+    features, so that, e.g., a distance in kilometers outscores any 0/1 feature.
+    The per-class covariances are brought back to the features' units, then
+    means and covariances are rescaled by the total standard deviation of every
+    feature (pooled over the classes): the scores become independent of the
+    units, and their ridge terms keep acting on unit-variance features.
+
+    Parameters
+    ----------
+    class_statistics : sequence of dict
+        Per-class sketch statistics with ``joint_cofactor_matrix`` (P, P),
+        ``features_mean`` (P,), ``joint_count`` and ``features_std`` (P,). A
+        missing ``features_std`` leaves that class's covariance standardized.
+
+    Returns
+    -------
+    tuple of (K, P) class means, (K, P, P) class covariances and (K,) counts.
+    """
+    counts = np.array([s['joint_count'] for s in class_statistics], dtype=float)
+    means = np.stack([np.asarray(s['features_mean'], dtype=float).reshape(-1) for s in class_statistics])
+    covariances = []
+    for s in class_statistics:
+        covariance = np.asarray(s['joint_cofactor_matrix'], dtype=float) / s['joint_count']
+        stds = s.get('features_std')
+        if stds is not None:
+            stds = np.asarray(stds, dtype=float).reshape(-1)
+            covariance = covariance * np.outer(stds, stds)
+        covariances.append(covariance)
+    covariances = np.stack(covariances)
+
+    # Law of total variance: pooled within-class variance plus the variance of the class means
+    pi = counts / counts.sum()
+    grand_mean = pi @ means
+    total_variance = np.einsum('k,kii->i', pi, covariances) + pi @ (means - grand_mean) ** 2
+    total_std = np.sqrt(np.clip(total_variance, 0.0, None))
+    # A feature constant over all keys has a total variance of rounding noise only (the grand mean is not exactly the
+    # common value): dividing by it would inflate that noise into a class separation that the scores rank highest
+    # (the ceiling set by the ridge term), so such features are left unscaled
+    total_std[total_std <= 1e-10 * np.maximum(np.abs(grand_mean), 1.0)] = 1.0
+
+    return means / total_std, covariances / np.outer(total_std, total_std), counts
+
+
 def conditional_fisher_score(
     candidate_class_means,
     candidate_class_covs,

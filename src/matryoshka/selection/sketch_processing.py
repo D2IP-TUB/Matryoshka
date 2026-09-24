@@ -241,6 +241,25 @@ def _standardize_gram_inputs_pure(cofactor_matrix, feature_target_vector, featur
     return np.array(cofactor_std), np.array(feature_target_std)
 
 
+def _centered_target_ss(y_t_y, target_sum_vec, joint_count):
+    """Centered sum of squares of the target, sum((y - mean(y))^2), from its raw sum of squares and sum.
+
+    The regression proxies score the standardized, centered cross-products X'y against y'y: the latter must be
+    centered too, otherwise every residual sum of squares carries the constant n * mean(y)^2, which dwarfs the
+    variation the features explain and shrinks their relative improvements accordingly.
+    """
+    return float(y_t_y) - float(np.sum(target_sum_vec)) ** 2 / float(joint_count)
+
+
+def _feature_stds_pure(cofactor_matrix, features_sum, joint_count):
+    """Standard deviation of every feature, as used by `_standardize_gram_inputs_pure` (1 for constant features)."""
+    cofactor_centered = cofactor_matrix - np.outer(features_sum, features_sum) / joint_count
+    feature_vars = np.clip(np.diag(cofactor_centered) / joint_count, a_min=0.0, a_max=None)
+    feature_stds = np.sqrt(feature_vars)
+    feature_stds[feature_stds == 0] = 1.0
+    return feature_stds
+
+
 def _compute_feature_update(shared_state, feature_entry, task):
     """Pure function: compute the cache update + fs_output for one feature.
     
@@ -322,7 +341,7 @@ def _compute_feature_update(shared_state, feature_entry, task):
             'joint_cofactor_matrix': joint_cofactor_matrix_std,
             'joint_feature_target_vector': joint_feature_target_vector_std,
             'joint_count': joint_count,
-            'y_t_y': y_t_y,
+            'y_t_y': _centered_target_ss(y_t_y, base_target_sum_vec, joint_count),
             'base_target_sum_vec': base_target_sum_vec,
             # Candidate block size (trailing n_Z columns of the joint Gram),
             # needed by the conditional-GCV proxy to split the joint into the
@@ -334,6 +353,9 @@ def _compute_feature_update(shared_state, feature_entry, task):
         fs_output = {
             'joint_cofactor_matrix': joint_cofactor_matrix_std,
             'features_mean': features_mean,
+            # Standard deviations the Gram matrix of this class was standardized with, to bring the classes to a
+            # common scale before scoring (see `matryoshka.selection.models.standardized_class_statistics`)
+            'features_std': _feature_stds_pure(joint_cofactor_matrix[np.ix_(complement, complement)], joint_sum_vec, joint_count),
             'joint_count': joint_count,
             'new_features_count': new_features_count
         }
@@ -1206,24 +1228,28 @@ class SketchProcessor:
                 'joint_cofactor_matrix': joint_cofactor_matrix_std,
                 'joint_feature_target_vector': joint_feature_target_vector_std,
                 'joint_count': joint_count,
-                'y_t_y': y_t_y,
+                'y_t_y': _centered_target_ss(y_t_y, base_target_sum_vec, joint_count),
                 'base_target_sum_vec': base_target_sum_vec
             }
         elif task == 'classification':
             features_mean = joint_sum_vec / joint_count
+            # Standard deviations the Gram matrix of this class was standardized with, to bring the classes to a
+            # common scale before scoring (see `matryoshka.selection.models.standardized_class_statistics`)
+            features_std = _feature_stds_pure(joint_cofactor_matrix[np.ix_(complement, complement)], joint_sum_vec, joint_count)
             self.fs_output[table_feature_index] = {
                 'joint_cofactor_matrix': joint_cofactor_matrix_std,
                 'features_mean': features_mean,
+                'features_std': features_std,
                 'joint_count': joint_count,
                 'new_features_count': new_features_count
             }
 
         if task == 'regression' and standardize:
-            return joint_cofactor_matrix_std, joint_feature_target_vector_std, joint_count, y_t_y, new_features_count, base_target_sum_vec
+            return joint_cofactor_matrix_std, joint_feature_target_vector_std, joint_count, _centered_target_ss(y_t_y, base_target_sum_vec, joint_count), new_features_count, base_target_sum_vec
         elif task == 'regression' and not standardize:
             return joint_cofactor_matrix[np.ix_(complement, complement)], joint_feature_target_vector[complement], joint_count, y_t_y, new_features_count, base_target_sum_vec
         elif task == 'classification':
-            return {label: [joint_cofactor_matrix_std, features_mean, joint_count, new_features_count]}
+            return {label: [joint_cofactor_matrix_std, features_mean, joint_count, new_features_count, features_std]}
 
 
     def _update_from_cache(self, table_feature_index: str, task: str) -> None:
@@ -1298,6 +1324,8 @@ class SketchProcessor:
             }
         )
 
+        # Computed before the Gram matrix is overwritten in place with its standardized version
+        features_std = _feature_stds_pure(joint_cofactor_matrix[np.ix_(complement, complement)], joint_sum_vec, joint_count)
         joint_cofactor_matrix[np.ix_(complement, complement)] = joint_cofactor_matrix_std
         joint_feature_target_vector[complement] = joint_feature_target_vector_std
 
@@ -1306,7 +1334,7 @@ class SketchProcessor:
                 'joint_cofactor_matrix': joint_cofactor_matrix_std,
                 'joint_feature_target_vector': joint_feature_target_vector_std,
                 'joint_count': joint_count,
-                'y_t_y': y_t_y,
+                'y_t_y': _centered_target_ss(y_t_y, base_target_sum_vec, joint_count),
                 'base_target_sum_vec': base_target_sum_vec
             }
         elif task == 'classification':
@@ -1314,11 +1342,13 @@ class SketchProcessor:
             self.fs_output[table_feature_index] = {
                 'joint_cofactor_matrix': joint_cofactor_matrix_std,
                 'features_mean': features_mean,
+                # Standard deviations the Gram matrix of this class was standardized with (see `_join_aug_table`)
+                'features_std': features_std,
                 'joint_count': joint_count,
                 'new_features_count': new_features_count
             }
 
-        return joint_cofactor_matrix_std, joint_feature_target_vector_std, joint_count, y_t_y, new_features_count
+        return joint_cofactor_matrix_std, joint_feature_target_vector_std, joint_count, _centered_target_ss(y_t_y, base_target_sum_vec, joint_count), new_features_count
 
 
     def _update_from_cache_batch(self, table_feature_indices: list[str], task: str) -> None:
