@@ -65,6 +65,7 @@ def conditional_fisher_score(
     cross_class_covs=None,
     lambda_x: float = 1e-3,
     lambda_z: float = 1e-3,
+    with_diagnostics: bool = False,
 ):
     r"""Incremental conditional multiclass Fisher (Mahalanobis) feature score.
 
@@ -105,7 +106,10 @@ def conditional_fisher_score(
     Returns
     -------
     dict with keys ``incremental_score``, ``raw_score``, ``S_Z_given_X``,
-    ``S_B_Z_given_X`` and ``diagnostics``.
+    ``S_B_Z_given_X`` and ``diagnostics``. The condition numbers in
+    ``diagnostics`` are ``None`` unless ``with_diagnostics`` is set: each is a
+    full SVD, and forward selection calls this once per candidate per
+    iteration, where they dominated the runtime.
     """
     cand_means = np.asarray(candidate_class_means, dtype=float)
     if cand_means.ndim == 1:
@@ -160,7 +164,10 @@ def conditional_fisher_score(
         S_XZ = S_ZX.T                        # (p, q)
 
         A = S_XX + lambda_x * Ip
-        cond_xx = float(np.linalg.cond(A))
+        # Condition numbers are reported only on request: each is a full SVD,
+        # and forward selection calls this once per candidate per iteration
+        if with_diagnostics:
+            cond_xx = float(np.linalg.cond(A))
         # Part of each class-mean shift in Z not explained by X:
         # d_{Z|X}_k = d_Z_k - S_ZX A^{-1} d_X_k   (solve, never invert).
         d_Z_given_X = d_Z - (S_ZX @ np.linalg.solve(A, d_X.T)).T        # (K, q)
@@ -171,7 +178,7 @@ def conditional_fisher_score(
         incremental_score = float(np.trace(
             np.linalg.solve(S_Z_given_X + lambda_z * Iq, S_B_Z_given_X)))
 
-    cond_zgx = float(np.linalg.cond(S_Z_given_X + lambda_z * Iq))
+    cond_zgx = float(np.linalg.cond(S_Z_given_X + lambda_z * Iq)) if with_diagnostics else None
     # A genuinely negative score (beyond numerical tolerance) is unexpected for
     # a PSD between-class scatter against a regularized SPD covariance.
     negative_warning = (incremental_score < -1e-10) or (raw_score < -1e-10)
@@ -215,6 +222,7 @@ def conditional_regression_score(
     q_candidate=None,
     lambda_x: float = 1e-3,
     lambda_z: float = 1e-3,
+    with_diagnostics: bool = False,
 ):
     r"""Incremental conditional OLS-proxy feature score for regression.
 
@@ -307,7 +315,9 @@ def conditional_regression_score(
         rss_current = yty
     else:
         A = XtX + lambda_x * np.eye(p)
-        cond_xx = float(np.linalg.cond(A))
+        # See conditional_fisher_score: a full SVD per candidate, on request only
+        if with_diagnostics:
+            cond_xx = float(np.linalg.cond(A))
         if cross_provided:
             ZtX = np.asarray(cross_ztx, dtype=float).reshape(q, p)
         else:
@@ -319,7 +329,7 @@ def conditional_regression_score(
         rss_current = yty - float(Xty @ A_inv_Xty)
 
     G_reg = G + lambda_z * Iq
-    cond_zgx = float(np.linalg.cond(G_reg))
+    cond_zgx = float(np.linalg.cond(G_reg)) if with_diagnostics else None
     delta_rss = float(c @ np.linalg.solve(G_reg, c))
 
     # Tiny round-off negatives -> 0; genuinely negative values are kept + warned.
