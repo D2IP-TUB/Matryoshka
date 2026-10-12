@@ -202,6 +202,9 @@ class JoinDiscovery(DBHandler):
         # the index and cached.
         self._excluded_table_names: set[str] = set(exclude_tables or ())
         self._excluded_index_cache: dict[str, int | None] = {}
+        # `table_name` -> `table_index` of every indexed table, read once by
+        # `_table_index_names` on the first exclusion that needs resolving.
+        self._table_index_name_cache: 'dict[str, int] | None' = None
 
 
     def find_joinable_tables(self, query_column: pl.DataFrame, top_k: int, user_table_processed: pl.DataFrame,
@@ -297,6 +300,53 @@ class JoinDiscovery(DBHandler):
             return overlap_query_results
 
 
+    def _table_index_names(self) -> dict[str, int]:
+        '''Map every indexed ``table_name`` to its ``table_index``, scanned once.
+
+        The index holds one row per (key, table, column), so a predicate on
+        ``table_name`` -- which is not indexed -- is a sequential scan of the
+        whole index: 309 s on a 2,600-table lake. ``table_index`` is indexed,
+        and there are only as many distinct values as there are lake tables, so
+        a loose (skip) index scan enumerates them and picks up one
+        ``table_name`` per table from the heap. That reads the same information
+        in under a second, and names are then matched in Python.
+
+        ``{feature_selection_table_name}_meta`` holds the same mapping in one
+        row per table, but it is only written when the index is built with
+        update support, so it cannot be relied on here.
+        '''
+        if self._table_index_name_cache is not None:
+            return self._table_index_name_cache
+
+        table = self.feature_selection_table_name
+        query = (
+            'WITH RECURSIVE t AS ('
+            f'        SELECT min(table_index) AS ti FROM {table} '
+            '    UNION ALL '
+            f'        SELECT (SELECT min(table_index) FROM {table} w WHERE w.table_index > t.ti) '
+            '        FROM t WHERE t.ti IS NOT NULL'
+            ') '
+            'SELECT ti AS table_index, '
+            f'       (SELECT table_name FROM {table} w WHERE w.table_index = ti LIMIT 1) AS table_name '
+            'FROM t WHERE ti IS NOT NULL'
+        )
+        try:
+            found = pl.read_database_uri(query, self.conninfo)
+        except Exception:
+            found = pl.DataFrame({'table_name': [], 'table_index': []})
+
+        names: dict[str, int] = {}
+        if found.height:
+            for row_name, row_index in zip(found['table_name'].to_list(), found['table_index'].to_list()):
+                if row_name is None or row_index is None:
+                    continue
+                names[str(row_name)] = int(row_index)
+                names[os.path.splitext(str(row_name))[0]] = int(row_index)
+        self._table_index_name_cache = names
+
+        return names
+
+
     def _resolve_excluded_indices(self, table_names) -> list[int]:
         '''Map lake table names to their ``table_index`` in the index.
 
@@ -309,30 +359,10 @@ class JoinDiscovery(DBHandler):
         indices: list[int] = []
         unresolved = [n for n in table_names if n not in self._excluded_index_cache]
         if unresolved:
-            variants = {}
+            lookup = self._table_index_names()
             for name in unresolved:
-                stem = os.path.splitext(os.path.basename(str(name)))[0]
-                variants[name] = {str(name), os.path.basename(str(name)), stem}
-            wanted = sorted({v for group in variants.values() for v in group})
-            placeholders = ','.join(f"'{v}'" for v in wanted)
-            query = (
-                f'SELECT DISTINCT table_name, table_index '
-                f'FROM {self.feature_selection_table_name} '
-                f'WHERE table_name IN ({placeholders}) '
-                f"   OR regexp_replace(table_name, '\\.[^.]*$', '') IN ({placeholders})"
-            )
-            try:
-                found = pl.read_database_uri(query, self.conninfo)
-            except Exception:
-                found = pl.DataFrame({'table_name': [], 'table_index': []})
-            lookup = {}
-            for row_name, row_index in zip(found['table_name'].to_list() if found.height else [],
-                                           found['table_index'].to_list() if found.height else []):
-                lookup[row_name] = int(row_index)
-                lookup[os.path.splitext(row_name)[0]] = int(row_index)
-            for name in unresolved:
-                match = next((lookup[v] for v in variants[name] if v in lookup), None)
-                self._excluded_index_cache[name] = match
+                variants = (str(name), os.path.basename(str(name)), os.path.splitext(os.path.basename(str(name)))[0])
+                self._excluded_index_cache[name] = next((lookup[v] for v in variants if v in lookup), None)
         for name in table_names:
             resolved = self._excluded_index_cache.get(name)
             if resolved is not None:
