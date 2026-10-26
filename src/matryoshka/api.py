@@ -348,7 +348,10 @@ class Augmenter:
     exclude_tables
         Lake table names never retrieved. Set this when the query table is
         itself a member of the lake, so that it cannot retrieve itself and
-        leak its own target back in as a candidate feature.
+        leak its own target back in as a candidate feature. A name is a file
+        name, its stem, or a path; it also matches tables stored under an
+        archive member path such as ``datasets_UK/<file>``. Names that match
+        no indexed table raise a ``RuntimeWarning``.
     features_stop_list
         Lake columns never used as features, as ``{lake table name: [column
         names]}``. Table names are file names, with or without the extension;

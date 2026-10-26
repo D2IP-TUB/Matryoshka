@@ -96,3 +96,13 @@ def test_missing_headers_fail_loudly():
     results = retrieval_results().drop('column_headers')
     with pytest.raises(ValueError, match='column_headers'):
         apply_features_stop_list(results, normalize_features_stop_list({'other.parquet': ['region']}), has_mask=False)
+
+
+def test_a_compressed_table_matches_by_its_stem():
+    results = retrieval_results().with_columns(
+        pl.when(pl.col('table_name') == 'other.parquet').then(pl.lit('tsv/tm6d-hbzd.tsv.gz')).otherwise(pl.col('table_name')).alias('table_name'))
+    for table_name in ('tm6d-hbzd', 'tm6d-hbzd.tsv', 'tm6d-hbzd.tsv.gz'):
+        stop_list = normalize_features_stop_list({table_name: ['region']})
+        out, masked = apply_features_stop_list(results, stop_list, has_mask=False)
+        assert masked, table_name
+        assert masks(out)[(1, 0)] == [1, 0]

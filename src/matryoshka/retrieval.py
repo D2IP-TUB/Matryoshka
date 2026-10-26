@@ -1,6 +1,7 @@
 import os
 import re
 import time
+import warnings
 from typing import Iterable, Mapping
 
 import adbc_driver_postgresql.dbapi as adbc_dbapi
@@ -13,6 +14,25 @@ from .db.handler import DBHandler
 from .exceptions import KeyNotFoundError
 from .utils.common import process_key, struct_fields
 from .utils.logging import default_log_dir, setup_logger
+
+_COMPRESSION_SUFFIXES = ('.gz', '.bz2', '.xz', '.zst')
+
+
+def _name_variants(name: str) -> list[str]:
+    """A table name, without its extension, and without a compressed extension.
+
+    ``tm6d-hbzd.tsv.gz`` yields ``tm6d-hbzd.tsv.gz``, ``tm6d-hbzd.tsv`` and
+    ``tm6d-hbzd``. Only one further extension is removed after a compression
+    suffix, as table names can contain dots.
+    """
+    variants = [name]
+    stem, ext = os.path.splitext(name)
+    if ext:
+        variants.append(stem)
+        if ext.lower() in _COMPRESSION_SUFFIXES and os.path.splitext(stem)[1]:
+            variants.append(os.path.splitext(stem)[0])
+
+    return variants
 
 
 def normalize_features_stop_list(features_stop_list: 'Mapping[str, Iterable[str]] | None') -> dict[str, set[str]]:
@@ -50,8 +70,9 @@ def _features_stop_list_masks(join_selection_query_results: pl.DataFrame, featur
     was grouped by, so stop-listed features are located by name within every
     (table, key column, feature group). All aggregates of a stop-listed column
     are masked. A stop-list entry matches a lake table if it equals the
-    basename of its `table_name`, with or without the extension (entries are
-    never split at a dot, as table names can contain dots).
+    basename of its `table_name`, with or without the extension (see
+    `_name_variants`; entries are never split at a dot, as table names can
+    contain dots).
 
     Parameters:
     ----------
@@ -78,8 +99,7 @@ def _features_stop_list_masks(join_selection_query_results: pl.DataFrame, featur
     masks = []
     for group in feature_groups.iter_rows(named=True):
         table_name = str(group['table_name'])
-        basename = os.path.basename(table_name)
-        names = {basename, os.path.splitext(basename)[0]}
+        names = _name_variants(os.path.basename(table_name))
         stop_listed_columns = set().union(*(features_stop_list.get(name, set()) for name in names))
         if not stop_listed_columns:
             continue
@@ -201,10 +221,10 @@ class JoinDiscovery(DBHandler):
         # `find_joinable_tables`; names are resolved against `table_name` in
         # the index and cached.
         self._excluded_table_names: set[str] = set(exclude_tables or ())
-        self._excluded_index_cache: dict[str, int | None] = {}
+        self._excluded_index_cache: dict[str, tuple[int, ...]] = {}
         # `table_name` -> `table_index` of every indexed table, read once by
         # `_table_index_names` on the first exclusion that needs resolving.
-        self._table_index_name_cache: 'dict[str, int] | None' = None
+        self._table_index_name_cache: 'dict[str, dict[str, set[int]]] | None' = None
 
 
     def find_joinable_tables(self, query_column: pl.DataFrame, top_k: int, user_table_processed: pl.DataFrame,
@@ -300,7 +320,7 @@ class JoinDiscovery(DBHandler):
             return overlap_query_results
 
 
-    def _table_index_names(self) -> dict[str, int]:
+    def _table_index_names(self) -> dict[str, dict[str, set[int]]]:
         '''Map every indexed ``table_name`` to its ``table_index``, scanned once.
 
         The index holds one row per (key, table, column), so a predicate on
@@ -311,9 +331,16 @@ class JoinDiscovery(DBHandler):
         ``table_name`` per table from the heap. That reads the same information
         in under a second, and names are then matched in Python.
 
-        ``{feature_selection_table_name}_meta`` holds the same mapping in one
-        row per table, but it is only written when the index is built with
-        update support, so it cannot be relied on here.
+        Indexes written before ``table_name`` was a column of the index have
+        no names to read, so the mapping falls back to
+        ``{feature_selection_table_name}_meta``, which holds it in one row per
+        table when the index was built with update support.
+
+        Returns two lookups: ``'full'`` keys the stored names, with and without
+        their extension (see `_name_variants`); ``'base'`` keys their
+        basenames, likewise. Tables read from archives are stored under their member
+        path (``datasets_UK/UK_CSV0000000000000890.csv``), so a basename can
+        name several tables, hence the sets.
         '''
         if self._table_index_name_cache is not None:
             return self._table_index_name_cache
@@ -330,18 +357,25 @@ class JoinDiscovery(DBHandler):
             f'       (SELECT table_name FROM {table} w WHERE w.table_index = ti LIMIT 1) AS table_name '
             'FROM t WHERE ti IS NOT NULL'
         )
-        try:
-            found = pl.read_database_uri(query, self.conninfo)
-        except Exception:
-            found = pl.DataFrame({'table_name': [], 'table_index': []})
+        meta_query = f'SELECT table_index, table_name FROM {table}_meta'
+        found = pl.DataFrame({'table_name': [], 'table_index': []})
+        for candidate in (query, meta_query):
+            try:
+                found = pl.read_database_uri(candidate, self.conninfo)
+            except Exception:
+                continue
+            if found.height and found['table_name'].null_count() < found.height:
+                break
 
-        names: dict[str, int] = {}
+        names: dict[str, dict[str, set[int]]] = {'full': {}, 'base': {}}
         if found.height:
             for row_name, row_index in zip(found['table_name'].to_list(), found['table_index'].to_list()):
                 if row_name is None or row_index is None:
                     continue
-                names[str(row_name)] = int(row_index)
-                names[os.path.splitext(str(row_name))[0]] = int(row_index)
+                row_name = str(row_name)
+                for kind, variant in (('full', row_name), ('base', os.path.basename(row_name))):
+                    for name in _name_variants(variant):
+                        names[kind].setdefault(name, set()).add(int(row_index))
         self._table_index_name_cache = names
 
         return names
@@ -350,23 +384,33 @@ class JoinDiscovery(DBHandler):
     def _resolve_excluded_indices(self, table_names) -> list[int]:
         '''Map lake table names to their ``table_index`` in the index.
 
-        A name is matched first exactly, then against the basename with and
-        without a file extension, so that ``covertype``, ``covertype.csv`` and
-        ``/lake/covertype.csv`` all resolve. Names absent from the index
-        resolve to nothing and are silently ignored: excluding a table that was
-        never indexed is a no-op, not an error.
+        A name is matched first exactly against the stored names, with or
+        without their extension, then by its basename against the basenames of
+        the stored names, so that ``covertype``, ``covertype.csv`` and
+        ``/lake/covertype.csv`` all resolve, as does ``UK_CSV0000000000000890``
+        for a table stored as ``datasets_UK/UK_CSV0000000000000890.csv`` and
+        ``tm6d-hbzd`` for one stored as ``tsv/tm6d-hbzd.tsv.gz``. A
+        basename shared by several tables excludes all of them, since leaving
+        the query table in is the costlier mistake.
+
+        A name absent from the index excludes nothing and raises a
+        `RuntimeWarning`: excluding a table that was never indexed is not an
+        error, but a misspelt name would otherwise let the query table
+        silently retrieve itself.
         '''
+        table_names = [str(name) for name in table_names]
         indices: list[int] = []
         unresolved = [n for n in table_names if n not in self._excluded_index_cache]
         if unresolved:
             lookup = self._table_index_names()
             for name in unresolved:
-                variants = (str(name), os.path.basename(str(name)), os.path.splitext(os.path.basename(str(name)))[0])
-                self._excluded_index_cache[name] = next((lookup[v] for v in variants if v in lookup), None)
+                matched = next((lookup[kind][v] for kind, variant in (('full', name), ('base', os.path.basename(name)))
+                                for v in _name_variants(variant) if v in lookup[kind]), None)
+                self._excluded_index_cache[name] = tuple(sorted(matched or ()))
+                if not matched:
+                    warnings.warn(f'Excluded table {name!r} is not in {self.feature_selection_table_name}; nothing is excluded for it', RuntimeWarning, stacklevel=3)
         for name in table_names:
-            resolved = self._excluded_index_cache.get(name)
-            if resolved is not None:
-                indices.append(resolved)
+            indices.extend(self._excluded_index_cache.get(name, ()))
         return sorted(set(indices))
 
 
