@@ -1490,8 +1490,10 @@ class SketchProcessor:
     def remove_from_features_pool(self, table_feature_index: str) -> None:
         '''
         Written as a separate method since Ray Actors cannot update attribute values directly.
+        Idempotent: a feature can be removed both as the sibling of an accepted
+        feature and after its fit fails.
         '''
-        del self.cache[table_feature_index]
+        self.cache.pop(table_feature_index, None)
 
 
     def retrieve(self, attr_name):
