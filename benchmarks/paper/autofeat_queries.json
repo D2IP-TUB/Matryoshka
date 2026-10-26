@@ -1,0 +1,151 @@
+{
+  "description": "The eight AutoFeat binary-classification lakes of Section 7.2 (anytime augmentation, Fig. 4b). The query table is the base table of each lake; it is not a lake member.",
+  "queries": [
+    {
+      "name": "bioresponse",
+      "dataset": "bioresponse",
+      "lake": "autofeat_bioresponse",
+      "task": "classification",
+      "query_table": "bioresponse.csv",
+      "key": "Key_0_0",
+      "target": "target",
+      "categorical_features": [
+        "Key_0_0"
+      ],
+      "numeric_features": [
+        "D34",
+        "D137",
+        "D415",
+        "D190",
+        "D422",
+        "D399",
+        "D935",
+        "D176",
+        "D926",
+        "D235"
+      ]
+    },
+    {
+      "name": "covertype",
+      "dataset": "covertype",
+      "lake": "autofeat_covertype",
+      "task": "classification",
+      "query_table": "covertype.csv",
+      "key": "Key_0_0",
+      "target": "class",
+      "categorical_features": [
+        "Key_0_0"
+      ],
+      "numeric_features": [
+        "Soil_Type20",
+        "Soil_Type36",
+        "Soil_Type32",
+        "Soil_Type33"
+      ]
+    },
+    {
+      "name": "credit",
+      "dataset": "credit",
+      "lake": "autofeat_credit",
+      "task": "classification",
+      "query_table": "credit.csv",
+      "key": "Key_0_0",
+      "target": "class",
+      "categorical_features": [
+        "employment",
+        "Key_0_0"
+      ],
+      "numeric_features": [
+        "residence_since",
+        "num_dependents"
+      ]
+    },
+    {
+      "name": "eyemove",
+      "dataset": "eyemove",
+      "lake": "autofeat_eyemove",
+      "task": "classification",
+      "query_table": "eyemove.csv",
+      "key": "Key_0_0",
+      "target": "label",
+      "categorical_features": [
+        "Key_0_0"
+      ],
+      "numeric_features": [
+        "meanFixDur",
+        "timePrtctg",
+        "firstfixDur"
+      ]
+    },
+    {
+      "name": "jannis",
+      "dataset": "jannis",
+      "lake": "autofeat_jannis",
+      "task": "classification",
+      "query_table": "jannis.csv",
+      "key": "Key_0_0",
+      "target": "class",
+      "categorical_features": [
+        "Key_0_0"
+      ],
+      "numeric_features": [
+        "V4",
+        "V46",
+        "V54",
+        "V42"
+      ]
+    },
+    {
+      "name": "miniboone",
+      "dataset": "miniboone",
+      "lake": "autofeat_miniboone",
+      "task": "classification",
+      "query_table": "miniboone.csv",
+      "key": "Key_0_0",
+      "target": "signal",
+      "categorical_features": [
+        "Key_0_0"
+      ],
+      "numeric_features": [
+        "ParticleID_19",
+        "ParticleID_33",
+        "ParticleID_43"
+      ]
+    },
+    {
+      "name": "school",
+      "dataset": "school",
+      "lake": "autofeat_school",
+      "task": "classification",
+      "query_table": "school.csv",
+      "key": "DBN",
+      "target": "class",
+      "categorical_features": [
+        "DBN",
+        "School Name",
+        "School Type"
+      ],
+      "numeric_features": [
+        "Total Parent Response Rate (%)",
+        "Total Teacher Response Rate (%)",
+        "Total Student Response Rate (%)"
+      ]
+    },
+    {
+      "name": "steel",
+      "dataset": "steel",
+      "lake": "autofeat_steel",
+      "task": "classification",
+      "query_table": "steel.csv",
+      "key": "Key_0_0",
+      "target": "Class",
+      "categorical_features": [
+        "Key_0_0"
+      ],
+      "numeric_features": [
+        "V13",
+        "V12"
+      ]
+    }
+  ]
+}

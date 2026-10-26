@@ -1,0 +1,230 @@
+{
+  "description": "In-the-wild (ITW) query tables of Section 7.2 (paper Table 2). Feature lists define the setups; exclude_tables names the lake copy of a From-Lake query, to pass to Augmenter.",
+  "queries": [
+    {
+      "name": "jobs",
+      "dataset": "Jobs",
+      "lake": "cuk",
+      "task": "regression",
+      "query_table": "jobs.csv",
+      "key": "Professional/Occupational Group",
+      "target": "Payscale Maximum (Â£)",
+      "categorical_features": [
+        "Parent Department",
+        "Organisation",
+        "Grade",
+        "Professional/Occupational Group"
+      ],
+      "numeric_features": [],
+      "from_lake": true,
+      "exclude_tables": [
+        "UK_CSV0000000000000890.csv"
+      ]
+    },
+    {
+      "name": "imdb",
+      "dataset": "IMDB",
+      "lake": "gittables",
+      "task": "regression",
+      "query_table": "imdb.csv",
+      "key": "primaryTitle",
+      "target": "averageRating",
+      "categorical_features": [
+        "primaryTitle",
+        "startYear"
+      ],
+      "numeric_features": [
+        "numVotes",
+        "runtimeMinutes"
+      ]
+    },
+    {
+      "name": "pageviews",
+      "dataset": "Page Views",
+      "lake": "gittables",
+      "task": "regression",
+      "query_table": "pageviews.csv",
+      "key": "name",
+      "target": "TotalPageViews",
+      "categorical_features": [
+        "name",
+        "gender",
+        "occupation",
+        "industry",
+        "domain"
+      ],
+      "numeric_features": [
+        "numlangs",
+        "L_star",
+        "HPI"
+      ]
+    },
+    {
+      "name": "vgsales",
+      "dataset": "VG Sales",
+      "lake": "gittables",
+      "task": "regression",
+      "query_table": "vgsales.csv",
+      "key": "Publisher",
+      "target": "Global_Sales",
+      "categorical_features": [
+        "Name",
+        "Platform",
+        "Genre",
+        "Publisher",
+        "Year"
+      ],
+      "numeric_features": []
+    },
+    {
+      "name": "energy",
+      "dataset": "Energy",
+      "lake": "nyc",
+      "task": "regression",
+      "query_table": "energy.csv",
+      "key": "block",
+      "target": "ghg_intensity_2013",
+      "categorical_features": [
+        "block",
+        "agency",
+        "epa_benchmarked_as"
+      ],
+      "numeric_features": []
+    },
+    {
+      "name": "fire",
+      "dataset": "Fire Incidents",
+      "lake": "nyc",
+      "task": "regression",
+      "query_table": "fire.csv",
+      "key": "zip_code",
+      "target": "total_incident_duration",
+      "categorical_features": [
+        "incident_date_time",
+        "zip_code",
+        "property_use_desc"
+      ],
+      "numeric_features": [
+        "units_onscene",
+        "fire_box"
+      ],
+      "from_lake": true,
+      "exclude_tables": [
+        "tm6d-hbzd"
+      ]
+    },
+    {
+      "name": "realestate",
+      "dataset": "Real Estate",
+      "lake": "nyc",
+      "task": "regression",
+      "query_table": "realestate.csv",
+      "key": "LONG_NAME",
+      "target": "PRICE",
+      "categorical_features": [
+        "LONG_NAME",
+        "TYPE",
+        "zip_code"
+      ],
+      "numeric_features": [
+        "BEDS",
+        "BATH",
+        "PROPERTYSQFT",
+        "LATITUDE",
+        "LONGITUDE"
+      ]
+    },
+    {
+      "name": "arrest",
+      "dataset": "Arrest Records",
+      "lake": "cuk",
+      "task": "classification",
+      "query_table": "arrest.csv",
+      "key": "Zipcode",
+      "target": "Type_of_Arrest",
+      "categorical_features": [
+        "Zipcode",
+        "Drugs_or_Alcohol_Present",
+        "Weapon_Present",
+        "Disposition"
+      ],
+      "numeric_features": [
+        "Age"
+      ],
+      "from_lake": true,
+      "exclude_tables": [
+        "USA_CSV0000000000036386.csv"
+      ]
+    },
+    {
+      "name": "hospital",
+      "dataset": "Hospital",
+      "lake": "cuk",
+      "task": "classification",
+      "query_table": "hospital.csv",
+      "key": "County of Program Location",
+      "target": "Primary Substance Group",
+      "categorical_features": [
+        "Year",
+        "County of Program Location",
+        "Program Category",
+        "Age Group"
+      ],
+      "numeric_features": [
+        "Admissions"
+      ],
+      "from_lake": true,
+      "exclude_tables": [
+        "USA_CSV0000000000033613.csv"
+      ]
+    },
+    {
+      "name": "food",
+      "dataset": "Food Facts",
+      "lake": "gittables",
+      "task": "classification",
+      "query_table": "food.csv",
+      "key": "food_groups_en",
+      "target": "ecoscore_grade",
+      "categorical_features": [
+        "food_groups_en"
+      ],
+      "numeric_features": [
+        "nutriscore_score",
+        "energy-kcal_100g",
+        "fat_100g",
+        "saturated-fat_100g",
+        "carbohydrates_100g",
+        "sugars_100g",
+        "proteins_100g",
+        "salt_100g",
+        "sodium_100g",
+        "nutrition-score-fr_100g"
+      ]
+    },
+    {
+      "name": "trees",
+      "dataset": "Street Trees",
+      "lake": "nyc",
+      "task": "classification",
+      "query_table": "trees.csv",
+      "key": "street",
+      "target": "condition",
+      "categorical_features": [
+        "sidewalk_condition",
+        "spc_common",
+        "street",
+        "spc_latin",
+        "site",
+        "species"
+      ],
+      "numeric_features": [
+        "diameter"
+      ],
+      "from_lake": true,
+      "exclude_tables": [
+        "kyad-zm4j"
+      ]
+    }
+  ]
+}

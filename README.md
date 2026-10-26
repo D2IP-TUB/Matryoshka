@@ -113,8 +113,9 @@ pip install -e .
 ```
 
 Optional extras: `l1` for the L1 proxy models, `stepwise` for the batched
-incremental selector, `ssh` to reach the database over a tunnel, `dev` for the
-test suite.
+incremental selector, `ssh` to reach the database over a tunnel, `paper` for
+the paper's evaluation protocol (`matryoshka.evaluation`), `dev` for the test
+suite.
 
 A throwaway database for trying the system out:
 
@@ -179,13 +180,17 @@ column normalised with `process_key`; numeric, null-free feature columns next;
 and the target last, ordinal-encoded for classification.
 `mk.prepare_query_table` produces that layout from an arbitrary table using
 ordinal encoding and median/mode imputation. Any encoder that yields numeric,
-null-free columns is a valid substitute — the paper's experiments use a heavier
-AutoGluon-based pipeline. Passing a table in any other shape raises
+null-free columns is a valid substitute. The paper's experiments use a heavier
+AutoGluon-based pipeline, available as `matryoshka.evaluation.prepare_query_table_paper`
+(see [Reproducing the paper](#reproducing-the-paper)). Passing a table in any other shape raises
 `UserTableNotProcessed`.
 
 **If the query table is itself a member of the lake**, pass
 `exclude_tables=['its_name.csv']` to `Augmenter`. Otherwise it retrieves itself
-and its own target reappears as a candidate feature.
+and its own target reappears as a candidate feature. The file name or its stem
+is enough, also for tables indexed from archives under a member path such as
+`datasets_UK/UK_CSV0000000000000890.csv`; a name that matches no indexed table
+raises a `RuntimeWarning`.
 
 **If some lake columns are known to leak the target**, pass them as a features
 stop-list, `features_stop_list={'table.csv': ['column', ...]}`. Their features
@@ -235,7 +240,9 @@ src/matryoshka/          the installable library
   selection/             sketch processing, proxy models, search algorithms
   db/                    PostgreSQL schema and lazy connection settings
   lakes/                 archive readers and parallel table processors
+  evaluation.py          the paper's evaluation protocol (needs the `paper` extra)
 examples/covertype/      a complete, runnable example
+benchmarks/paper/        the paper's queries, settings and a runner
 baselines/               competing systems, for reproducing the evaluation
 tests/                   unit tests that need no database
 docs/                    the PVLDB paper and its GitHub Pages landing page
@@ -268,11 +275,33 @@ dependencies, and the paper for the head-to-head accuracy and runtime results.
 
 ## Reproducing the paper
 
-The full evaluation harness, the lakes, and the pre-built indexes are not part of
-this repository; several of the indexes are in the terabyte range. The
-[covertype example](examples/covertype/) reproduces the smallest configuration
-end to end, and the [paper](https://d2ip-tub.github.io/Matryoshka/)
-documents the experimental setup for the rest.
+The lakes and query tables of the experiments are on Zenodo:
+
+| Data | DOI |
+|---|---|
+| NYC lake | [10.5281/zenodo.23663482](https://doi.org/10.5281/zenodo.23663482) |
+| CUK lake | [10.5281/zenodo.23669209](https://doi.org/10.5281/zenodo.23669209) |
+| GitTables lake (table manifest and rebuild script) | [10.5281/zenodo.23663484](https://doi.org/10.5281/zenodo.23663484) |
+| Kitana leave-one-out lake | [10.5281/zenodo.23663486](https://doi.org/10.5281/zenodo.23663486) |
+| AutoFeat lakes | [10.5281/zenodo.23663494](https://doi.org/10.5281/zenodo.23663494) |
+| Query tables: Page Views, Energy, Fire Incidents | [10.5281/zenodo.23663497](https://doi.org/10.5281/zenodo.23663497) |
+| Query table: Food Facts | [10.5281/zenodo.23663529](https://doi.org/10.5281/zenodo.23663529) |
+| Query tables: Jobs, IMDB, VG Sales, Real Estate, Arrest Records, Hospital | [10.5281/zenodo.23669302](https://doi.org/10.5281/zenodo.23669302) |
+
+Each record names the original sources of its data; please cite them along
+with the paper. The pre-built indexes are not distributed; several are in the
+terabyte range. What is in this repository:
+
+- [`benchmarks/paper/`](benchmarks/paper/) holds every query of Section 7
+  (table, join key, target and features), the Matryoshka settings of each
+  experiment, and `run_query.py`, which runs a query against an index you
+  built and scores it.
+- `matryoshka.evaluation` implements the paper's evaluation protocol: query
+  preparation under the three feature setups, imputation, the target-leakage
+  filter, and the tuned random forest. Install it with
+  `pip install -e ".[paper]"`.
+- The [covertype example](examples/covertype/) reproduces the smallest
+  configuration end to end.
 
 ## Development
 

@@ -1,0 +1,123 @@
+{
+  "description": "Matryoshka settings of the paper's experiments (Section 7). Keys under 'regression' and 'classification' are Augmenter arguments; corr_threshold null disables pruning.",
+  "itw": {
+    "section": "7.2 End-to-end results (Table 3) and anytime augmentation on ITW Categorical (Fig. 4a)",
+    "queries": "itw_queries.json",
+    "setups": [
+      "join_key",
+      "categorical",
+      "binned"
+    ],
+    "lakes": [
+      "nyc",
+      "cuk",
+      "gittables"
+    ],
+    "common": {
+      "top_k": 20,
+      "budget_seconds": 1800,
+      "n_jobs": 16,
+      "params": {
+        "n_hops": 1
+      }
+    },
+    "regression": {
+      "model": "IncrementalRegressionFGS",
+      "metric": "mse",
+      "tol": 0.001,
+      "corr_threshold": 0.1
+    },
+    "classification": {
+      "model": "ClassificationCholesky",
+      "metric": "average_mahalanobis",
+      "tol": 0.5,
+      "corr_threshold": 0.3
+    }
+  },
+  "autofeat": {
+    "section": "7.2 Anytime augmentation on the AutoFeat lakes (Fig. 4b)",
+    "queries": "autofeat_queries.json",
+    "setups": [
+      "categorical"
+    ],
+    "common": {
+      "top_k": 20,
+      "budget_seconds": 1000,
+      "n_jobs": 16,
+      "params": {
+        "n_hops": 1
+      }
+    },
+    "classification": {
+      "model": "ClassificationCholesky",
+      "metric": "conditional_mahalanobis",
+      "tol": 0.05,
+      "corr_threshold": null
+    },
+    "downstream": "AutoFeat's original ensemble (random forest, gradient boosting, extra trees, XGBoost), reporting mean accuracy"
+  },
+  "kitana_loo": {
+    "section": "7.3 Leave-one-out benchmark (Table 5)",
+    "queries": "kitana_loo_benchmark.json",
+    "setups": [
+      "categorical"
+    ],
+    "protocol": "Each table with skip=false and a target is the query in turn; it is removed from the index before the query and re-inserted afterwards. disc.csv and datamart.socrata.data-cityofnewyork-us.t5qg-w9sq are dropped, leaving 256 queries.",
+    "common": {
+      "top_k": 20,
+      "n_jobs": 8,
+      "params": {
+        "n_hops": 1
+      }
+    },
+    "regression": {
+      "model": "IncrementalRegressionFGS",
+      "metric": "mse",
+      "tol": 0.01,
+      "corr_threshold": 0.1
+    }
+  },
+  "evaluation": {
+    "module": "matryoshka.evaluation",
+    "query_preparation": "prepare_query_table_paper: drop rows with a missing key or target; mode imputation for categorical and iterative Bayesian Ridge imputation for numeric features; AutoGluon AutoMLPipelineFeatureGenerator (text n-gram and special features off); ordinal-encoded classification target; join key normalised with process_key; binned setup: 4 quantile bins, dummy-coded with the first level dropped",
+    "augmented_preparation": "prepare_augmented_table: values beyond 1e17 masked, iterative imputation with a histogram gradient boosting regressor (100 iterations, depth 3, learning rate 0.1, 10 nearest features, 5 rounds), rows with missing values dropped",
+    "leakage_filter": {
+      "corr_threshold": 0.99,
+      "r2_threshold": 0.999
+    },
+    "downstream": {
+      "model": "random forest",
+      "search": "HalvingGridSearchCV, 3-fold, factor 3",
+      "grid": {
+        "max_depth": [
+          5,
+          10,
+          20
+        ],
+        "min_samples_leaf": [
+          10,
+          20,
+          50
+        ]
+      },
+      "cv_folds": 5,
+      "metrics": {
+        "regression": "RMSE",
+        "classification": "weighted F1"
+      }
+    },
+    "improvement": {
+      "regression": "(base_rmse - augmented_rmse) / base_rmse * 100",
+      "classification": "(augmented_f1 - base_f1) / |base_f1| * 100"
+    },
+    "versions": {
+      "python": "3.12",
+      "autogluon": "1.4.0",
+      "scikit-learn": "1.7.2",
+      "scikit-learn-intelex": "2025.10.1 (intelex=True)",
+      "polars": "1.36.1",
+      "ray": "2.44.1",
+      "postgresql": "18"
+    }
+  }
+}
