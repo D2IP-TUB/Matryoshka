@@ -53,6 +53,15 @@ l1 = ["skglm>=0.4", "scikit-optimize>=0.10"]
 stepwise = ["kneed>=0.8"]
 # Access to the database over an SSH tunnel.
 ssh = ["sshtunnel>=0.4", "paramiko>=3.0"]
+# The paper's evaluation protocol (`matryoshka.evaluation`): AutoGluon's
+# feature generator, pandas, and scikit-learn-intelex's random forests
+# (x86-64 only). The paper's setup uses AutoGluon 1.4.0, scikit-learn 1.7.2
+# and scikit-learn-intelex 2025.10.
+paper = [
+    "autogluon.features>=1.4,<1.5",
+    "pandas>=2.0",
+    "scikit-learn-intelex>=2025.10; platform_machine == 'x86_64' or platform_machine == 'AMD64'",
+]
 dev = ["pytest>=8.0", "ruff>=0.6"]
 
 [project.scripts]
