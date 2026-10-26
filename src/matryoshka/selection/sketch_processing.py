@@ -13,7 +13,7 @@ from matryoshka.utils.f32_numpy import is_patched
 
 from ..exceptions import EmptyAugmentation
 from ..utils.common import compute_outer_products_adaptive as compute_outer_products
-from ..utils.common import extract_cofactors
+from ..utils.common import extract_cofactors, struct_fields
 from .base.sketch import AugSketch, BaseSketch
 
 
@@ -449,7 +449,7 @@ def _impute_sketch_table_pure(user_table_agg, sketch_table, query_column_name, t
         sketch_table.select(
             pl.concat_list(
                 pl.col('sum')
-                .list.to_struct(upper_bound=list_len)
+                .list.to_struct(fields=struct_fields(list_len))
                 .struct.unnest()
                 .mean()
             )
@@ -1074,7 +1074,7 @@ class SketchProcessor:
             sketch_table.select(
                 pl.concat_list(
                     pl.col('sum')
-                    .list.to_struct(upper_bound=list_len)
+                    .list.to_struct(fields=struct_fields(list_len))
                     .struct.unnest()
                     .mean()
                 )

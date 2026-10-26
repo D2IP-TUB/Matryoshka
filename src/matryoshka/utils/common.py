@@ -340,6 +340,15 @@ def construct_dot_product_matrix(values: list[float], triu: bool = True) -> np.n
     return matrix
 
 
+def struct_fields(n: int) -> list[str]:
+    """Field names for unnesting an ``n``-element list column into a struct.
+
+    ``list.to_struct(upper_bound=n)`` was removed in polars 2.0; these are the
+    names it produced, so callers behave identically on polars 1 and 2.
+    """
+    return [f'field_{i}' for i in range(n)]
+
+
 def process_key(key: str) -> str:
     '''
     Processes the foreign key value by normalizing and removing special characters

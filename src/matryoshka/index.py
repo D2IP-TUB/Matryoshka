@@ -28,7 +28,7 @@ from sklearn.preprocessing import OneHotEncoder
 from matryoshka.db.handler import DBHandler
 from matryoshka.lakes.archives import DirectoryLoader, TarArchiveLoader, ZipArchiveLoader
 from matryoshka.lakes.parallel import RayTableProcessor, TableProcessor
-from matryoshka.utils.common import process_key, semiring_aggregates
+from matryoshka.utils.common import process_key, semiring_aggregates, struct_fields
 from matryoshka.utils.logging import default_log_dir, setup_logger
 from matryoshka.utils.sampling import priority_sampling, reweight
 
@@ -717,7 +717,7 @@ class ExhaustiveIndex(DBHandler):
                 df
                     .filter(pl.col(query_col).is_in(df.select('key').to_series()))
                     .sort(query_col)
-                    .select(pl.col(query_col).repeat_by(n_cols).list.to_struct(upper_bound=n_cols).struct.unnest())
+                    .select(pl.col(query_col).repeat_by(n_cols).list.to_struct(fields=struct_fields(n_cols)).struct.unnest())
             )
             qcr_positive = self._build_qcr_candidate(sub_table, df, sub_table.columns, n_cols, True)
             qcr_negative = self._build_qcr_candidate(sub_table, df, sub_table.columns, n_cols, False)
@@ -737,7 +737,7 @@ class ExhaustiveIndex(DBHandler):
                 [
                     group
                         .select(['key', 'sum'])
-                        .with_columns(pl.col('sum').list.to_struct(upper_bound=n_cols).struct.unnest())
+                        .with_columns(pl.col('sum').list.to_struct(fields=struct_fields(n_cols)).struct.unnest())
                         .drop(['sum'])
                 ],
                 how='horizontal'

@@ -11,7 +11,7 @@ import polars_hash as plh
 
 from .db.handler import DBHandler
 from .exceptions import KeyNotFoundError
-from .utils.common import process_key
+from .utils.common import process_key, struct_fields
 from .utils.logging import default_log_dir, setup_logger
 
 
@@ -683,7 +683,7 @@ class JoinDiscovery(DBHandler):
     def _compute_eta(self, table: pl.DataFrame, user_table_processed_sample: pl.DataFrame, query_col: str, target: str) -> pl.DataFrame:
         n_cols = table.select(pl.col('sum').list.len()).row(0)[0]
         sub_table_group = user_table_processed_sample.join(
-            table.select('key', pl.col('sum').list.to_struct(upper_bound=n_cols).struct.unnest()),
+            table.select('key', pl.col('sum').list.to_struct(fields=struct_fields(n_cols)).struct.unnest()),
             left_on=query_col,
             right_on='key',
             how='left'
@@ -697,7 +697,7 @@ class JoinDiscovery(DBHandler):
             sub_table_group
             .group_by(target)
             .agg(
-                [pl.count().alias("n")] +
+                [pl.len().alias("n")] +
                 [pl.col(x).mean().alias(f"{x}_mean") for x in features]
             )
         )
@@ -764,7 +764,7 @@ class JoinDiscovery(DBHandler):
         query_qcr_table = user_table_processed.group_by(query_col, maintain_order=True).agg(pl.col(target).mean()).sort(query_col)
         sub_table = (
             query_qcr_table
-                .with_columns(pl.col(query_col).repeat_by(max_cols).list.to_struct(upper_bound=max_cols).struct.unnest())
+                .with_columns(pl.col(query_col).repeat_by(max_cols).list.to_struct(fields=struct_fields(max_cols)).struct.unnest())
         )
         dfs = []
         for group in join_selection_query_results.sort('key').group_by(['table_index', 'feature_index', 'table_column_index'], maintain_order=True):
@@ -777,8 +777,8 @@ class JoinDiscovery(DBHandler):
             query_term_positive = self._build_qcr_term(sub_table_group, True, target, query_col)
             query_term_negative = self._build_qcr_term(sub_table_group, False, target, query_col)
 
-            qcr_candidate_positive = group[1].select(pl.col('qcr_term_positive').list.to_struct(upper_bound=n_cols).struct.unnest())
-            qcr_candidate_negative = group[1].select(pl.col('qcr_term_negative').list.to_struct(upper_bound=n_cols).struct.unnest())
+            qcr_candidate_positive = group[1].select(pl.col('qcr_term_positive').list.to_struct(fields=struct_fields(n_cols)).struct.unnest())
+            qcr_candidate_negative = group[1].select(pl.col('qcr_term_negative').list.to_struct(fields=struct_fields(n_cols)).struct.unnest())
 
             qcr_scores_positive = self._qcr_score(query_term_positive, qcr_candidate_positive, ids=group[0])
             qcr_scores_negative = self._qcr_score(query_term_negative, qcr_candidate_negative, ids=group[0])
@@ -880,7 +880,7 @@ class JoinDiscovery(DBHandler):
                 [
                     group[1]
                         .select(['key', 'sum'])
-                        .with_columns(pl.col('sum').list.to_struct(upper_bound=n_cols).struct.unnest())
+                        .with_columns(pl.col('sum').list.to_struct(fields=struct_fields(n_cols)).struct.unnest())
                         .drop(['key', 'sum']),
                     target_col
                 ],

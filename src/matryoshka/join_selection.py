@@ -27,6 +27,7 @@ from .selection.collinearity import CollinearityAnalysis
 from .selection.ranking import OverlapRanking
 from .selection.registry import resolve_model, resolve_strategy
 from .selection.sketch_processing import quantile_bin_thresholds
+from .utils.common import struct_fields
 from .utils.logging import default_log_dir, setup_logger
 
 
@@ -449,7 +450,7 @@ class JoinSelection(JoinDiscovery):
                         .with_columns(
                             pl.concat_list('sum', 'new_features').alias('sum')
                             .cast(pl.List(pl.Float64))
-                            .list.to_struct(upper_bound=n_features)
+                            .list.to_struct(fields=struct_fields(n_features))
                             .struct.unnest()
                         )
                         .drop('new_features')
@@ -484,7 +485,7 @@ class JoinSelection(JoinDiscovery):
                         .with_columns(
                             pl.concat_list('sum', 'new_features').alias('sum')
                             .cast(pl.List(pl.Float64))
-                            .list.to_struct(upper_bound=n_features)
+                            .list.to_struct(fields=struct_fields(n_features))
                             .struct.unnest()
                         )
                         .drop('new_features')
